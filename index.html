@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>捷米樂雲端指揮系統</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background: #222; color: #fff; overflow: hidden; }
+        #map { height: 100vh; width: 100vw; z-index: 1; }
+        
+        /* 介面樣式維持不變 */
+        .top-bar { position: absolute; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.8); padding: 10px; z-index: 1000; display: flex; justify-content: space-between; align-items: center; }
+        .control-panel { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(30,30,30,0.95); padding: 15px; z-index: 1000; border-top-left-radius: 15px; border-top-right-radius: 15px; }
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .btn { border: none; padding: 12px; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .btn-repair { background: #e0a800; }
+        .btn-move { background: #17a2b8; }
+        .btn-sos { background: #dc3545; }
+        #loginBtn { background: #4285F4; color: white; border: none; padding: 8px 15px; border-radius: 20px; }
+        .user-label { background: rgba(0,0,0,0.7); color: #fff; padding: 2px 5px; border-radius: 3px; border: 1px solid #fff; font-size: 11px; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div style="font-weight: bold;">☁️ 捷米樂雲端系統</div>
+    <button id="loginBtn" onclick="googleLogin()">G 登入 Google</button>
+</div>
+
+<div id="map"></div>
+
+<div class="control-panel">
+    <div id="statusMsg" style="font-size:12px; color:#aaa; margin-bottom:10px; text-align:center;">請先登入以同步位置</div>
+    <div class="quick-actions">
+        <button class="btn btn-repair" onclick="updateStatus('維修中')"><span>🔧</span> 維修</button>
+        <button class="btn btn-move" onclick="updateStatus('移動中')"><span>🚴</span> 移動</button>
+        <button class="btn btn-sos" onclick="updateStatus('緊急支援')"><span>🆘</span> 支援</button>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    // ==========================================================
+    // ⚠️ 請在這裡填入您的 Firebase 設定 (從 Firebase Console 複製)
+    // ==========================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
+        authDomain: "jamielove-map.firebaseapp.com",
+        projectId: "jamielove-map",
+        storageBucket: "jamielove-map.firebasestorage.app",
+        messagingSenderId: "971633917617",
+        appId: "1:971633917617:web:95c1b6c57ebc3a530bac90",
+    };
+
+    // 初始化 Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // 地圖初始化
+    const map = L.map('map').setView([24.1512, 120.9324], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);
+
+    let currentUser = null;
+    let markers = {}; // 存放所有隊員的標記
+
+    // 登入功能
+    window.googleLogin = () => {
+        signInWithPopup(auth, provider).catch(error => alert("登入失敗: " + error.message));
+    };
+
+    // 監聽登入狀態
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('loginBtn').innerText = `👤 ${user.displayName}`;
+            document.getElementById('statusMsg').innerText = "✅ 已連線雲端，位置同步中...";
+            startTracking(); // 開始上傳位置
+            listenToTeammates(); // 開始監聽隊友
+        }
+    });
+
+    // 功能 1: 上傳我的位置與狀態
+    function startTracking() {
+        if (!navigator.geolocation) return;
+        
+        // 持續監聽 GPS
+        navigator.geolocation.watchPosition((pos) => {
+            const { latitude, longitude } = pos.coords;
+            
+            // 寫入資料庫
+            setDoc(doc(db, "teams", currentUser.uid), {
+                name: currentUser.displayName,
+                lat: latitude,
+                lng: longitude,
+                photo: currentUser.photoURL,
+                lastUpdate: new Date().getTime(),
+                // 如果沒有狀態就保持原樣，這是一個 merge 更新
+            }, { merge: true });
+
+            // 移動地圖中心到自己
+            // map.setView([latitude, longitude]); 
+        }, err => console.error(err), { enableHighAccuracy: true });
+    }
+
+    // 功能 2: 更新按鈕狀態
+    window.updateStatus = (statusText) => {
+        if (!currentUser) return alert("請先登入！");
+        setDoc(doc(db, "teams", currentUser.uid), {
+            status: statusText,
+            statusTime: new Date().toLocaleTimeString()
+        }, { merge: true });
+        alert(`已更新狀態：${statusText}`);
+    };
+
+    // 功能 3: 即時監聽所有隊友位置
+    function listenToTeammates() {
+        // 監聽 "teams" 集合的任何變化
+        onSnapshot(collection(db, "teams"), (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                const uid = change.doc.id;
+                
+                if (change.type === "added" || change.type === "modified") {
+                    updateMarker(uid, data);
+                }
+                // (可選) 處理移除 removed
+            });
+        });
+    }
+
+    // 更新地圖上的標記
+    function updateMarker(uid, data) {
+        let popupContent = `
+            <div style="text-align:center">
+                <img src="${data.photo}" style="width:30px;border-radius:50%;"><br>
+                <b>${data.name}</b><br>
+                <span style="color:red;font-weight:bold">${data.status || '待命中'}</span><br>
+                <span style="font-size:10px;color:gray">${data.statusTime || ''}</span>
+            </div>
+        `;
+
+        if (markers[uid]) {
+            // 更新既有點位
+            markers[uid].setLatLng([data.lat, data.lng]);
+            markers[uid].setPopupContent(popupContent);
+            // 如果是自己，更新顏色區別
+            if(uid === currentUser.uid) markers[uid].openPopup(); 
+        } else {
+            // 建立新點位
+            const iconColor = (uid === currentUser.uid) ? 'blue' : 'green';
+            const iconHtml = `<div style='background-color:${iconColor};width:15px;height:15px;border-radius:50%;border:2px solid white;box-shadow:0 0 5px black;'></div>`;
+            const customIcon = L.divIcon({className: 'custom-div-icon', html: iconHtml, iconSize: [15, 15]});
+
+            markers[uid] = L.marker([data.lat, data.lng], {icon: customIcon})
+                .addTo(map)
+                .bindPopup(popupContent);
+        }
+    }
+</script>
+</body>
+</html>
