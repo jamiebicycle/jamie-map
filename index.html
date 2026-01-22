@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>捷米樂戰術系統 v3.0</title>
+    <title>捷米樂戰術系統 v3.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* --- 基礎設定 --- */
         body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; background: #222; overflow: hidden; }
         #map { height: 100vh; width: 100vw; z-index: 1; }
         
-        /* --- 通用 UI 元件 --- */
+        /* --- 通用 UI --- */
         .float-btn {
             background: rgba(255, 255, 255, 0.95); border: 1px solid #ccc; border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; font-weight: bold; color: #333;
@@ -25,87 +25,131 @@
         .dropdown-item:active { background: #f0f0f0; }
 
         /* --- 版面配置 --- */
-        /* 左上控制區 */
         .top-left-panel { position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; gap: 10px; }
-        /* 右上控制區 */
         .top-right-panel { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
-        /* 左側通訊面板 (參考 image_7 的聊天室位置) */
-        .left-comm-panel {
-            position: absolute; top: 70px; left: 10px; z-index: 999;
-            background: rgba(30, 30, 30, 0.8); border-radius: 10px; padding: 10px;
-            display: flex; flex-direction: column; gap: 10px;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
-        }
-        .comm-btn {
-            padding: 15px 10px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; font-size: 12px;
-        }
         
+        /* (修改) GPS 按鈕加大 */
+        .gps-btn {
+            width: 60px; height: 60px; border-radius: 15px; /* 方形圓角 */
+            justify-content: center; font-size: 32px; /* 圖示變大 */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            border: 2px solid #fff; background: rgba(0, 123, 255, 0.9); color: white;
+        }
+
+        /* (修改) 左側聊天室面板 */
+        .left-chat-panel {
+            position: absolute; top: 70px; left: 10px; z-index: 999;
+            width: 260px; background: rgba(30, 30, 30, 0.9); 
+            border: 1px solid #555; border-radius: 10px; 
+            display: flex; flex-direction: column;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.6);
+            height: 40vh; /* 高度佔螢幕 40% */
+            transition: height 0.3s;
+        }
+        .chat-header {
+            padding: 8px; background: #007bff; color: white; border-top-left-radius: 10px; border-top-right-radius: 10px;
+            font-size: 13px; font-weight: bold; display: flex; justify-content: space-between;
+        }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 10px; font-size: 12px; color: #fff;
+            display: flex; flex-direction: column; gap: 5px;
+        }
+        .chat-msg-row { word-break: break-all; }
+        .chat-input-area {
+            padding: 5px; border-top: 1px solid #555; display: flex; gap: 5px;
+        }
+        .chat-input {
+            flex: 1; background: #222; border: 1px solid #555; color: white; padding: 5px; border-radius: 4px;
+        }
+        .chat-send-btn {
+            background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;
+        }
+
         /* 底部區域 */
         .bottom-panel {
             position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
-            background: linear-gradient(to top, rgba(0,0,0,0.8) 70%, transparent);
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 70%, transparent);
             padding: 10px; display: flex; flex-direction: column; gap: 8px;
         }
 
-        /* --- 權限控制關鍵 CSS --- */
-        /* 預設隱藏管理員元素 */
+        /* 權限控制 */
         .admin-only { display: none !important; }
-        /* 當 body 有 .is-admin 類別時，顯示管理員元素 */
         body.is-admin .admin-only { display: block !important; }
         
-        /* 管理員專屬：訊息牆 */
-        #messageBox {
-            background: rgba(33, 76, 116, 0.85); border: 1px solid #4a90e2; border-radius: 5px;
+        /* 管理員專屬：系統日誌 (底部藍色) */
+        #systemLogBox {
+            background: rgba(33, 76, 116, 0.9); border: 1px solid #4a90e2; border-radius: 5px;
             height: 100px; overflow-y: auto; padding: 5px 10px; font-size: 12px; color: #fff; margin-bottom: 5px;
         }
 
         /* 戰術按鈕 */
         .action-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
-        .action-btn { border: none; padding: 12px 0; border-radius: 5px; font-weight: bold; color: white; font-size: 14px; }
+        .action-btn { border: none; padding: 15px 0; border-radius: 5px; font-weight: bold; color: white; font-size: 16px; cursor: pointer; }
         .btn-red { background: #d32f2f; box-shadow: 0 0 10px #d32f2f; }
         .btn-yellow { background: #fbc02d; color: #222; box-shadow: 0 0 10px #fbc02d; }
         .btn-green { background: #388e3c; box-shadow: 0 0 10px #388e3c; }
         .btn-blue { background: #1976d2; box-shadow: 0 0 10px #1976d2; }
+
+        /* 名單管理彈窗 */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center;
+        }
+        .modal-box {
+            background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 10px; color: #333;
+        }
+        .member-list-item {
+            display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;
+        }
+        .del-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
-
 <input type="file" id="gpxUpload" accept=".gpx" style="display: none;">
 
 <div class="top-left-panel">
     <div style="position:relative;">
-        <button class="float-btn" onclick="toggleMenu('manageMenu')">⚙️ 管理</button>
+        <button class="float-btn" onclick="toggleMenu('manageMenu')">⚙️ 管理選單</button>
         <div id="manageMenu" class="dropdown-menu">
-            <div class="dropdown-item admin-only" onclick="triggerGpxUpload()">📂 匯入 GPX 路線</div>
-            <div class="dropdown-item admin-only" onclick="clearGpxRoute()">🗑️ 清除路線</div>
-            <div class="dropdown-item admin-only" onclick="exportCSV()">📊 匯出訊息紀錄</div>
-            <div class="dropdown-item admin-only" style="color:#999;cursor:not-allowed">👥 名單管理 (未開放)</div>
-            <div class="dropdown-item" onclick="alert('捷米樂戰術系統 v3.0')">ℹ️ 關於系統</div>
+            <div class="dropdown-item admin-only" onclick="triggerGpxUpload()">📂 匯入/更換 路線</div>
+            <div class="dropdown-item admin-only" onclick="clearGpxRoute()">🗑️ 清除所有路線</div>
+            <div class="dropdown-item admin-only" onclick="openMemberManager()">👥 成員名單管理</div>
+            <div class="dropdown-item admin-only" onclick="clearChat()">💬 清除聊天紀錄</div>
+            <div class="dropdown-item" onclick="alert('v3.1 Build 20260122')">ℹ️ 系統資訊</div>
         </div>
     </div>
 </div>
 
-<div class="left-comm-panel">
-    <div style="color:#ccc; font-size:12px; text-align:center;">通訊面板</div>
-    <a href="zello://" class="comm-btn" style="background:#F57C00;text-decoration:none;">
-        <span style="font-size:20px">📱</span> Zello
-    </a>
-    <button class="comm-btn" style="background:#00796B;" onclick="alert('請手動切換至 Meshtastic App')">
-        <span style="font-size:20px">📡</span> Mesh
-    </button>
+<div class="left-chat-panel">
+    <div class="chat-header">
+        <span>💬 團隊聊天室</span>
+        <span style="font-size:10px; opacity:0.8;">Live</span>
+    </div>
+    <div id="chatMessages" class="chat-messages">
+        <div style="color:#aaa; text-align:center; margin-top:20px;">載入中...</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="chatInput" class="chat-input" placeholder="輸入訊息...">
+        <button class="chat-send-btn" onclick="sendChat()">傳送</button>
+    </div>
 </div>
 
 <div class="top-right-panel">
-    <button id="userBtn" class="float-btn" onclick="googleLogin()">👤 登入</button>
-    <button class="float-btn" style="padding:10px;" onclick="locateMe()">⌖</button>
+    <div style="position:relative;">
+        <button id="userBtn" class="float-btn" onclick="toggleMenu('userMenu')">👤 登入</button>
+        <div id="userMenu" class="dropdown-menu right" style="left:auto; right:0;">
+            <div class="dropdown-item" onclick="googleLogin()">Google 登入</div>
+            <div class="dropdown-item" onclick="googleLogout()">登出</div>
+        </div>
+    </div>
+    <button class="float-btn gps-btn" onclick="locateMe()">⌖</button>
 </div>
 
 <div class="bottom-panel">
-    <div id="messageBox" class="admin-only">
-        <div style="text-align:center;color:#aaa;padding-top:30px;">等待連線或無權限...</div>
+    <div id="systemLogBox" class="admin-only">
+        <div style="text-align:center;color:#aaa;padding-top:30px;">[系統日誌] 監聽中...</div>
     </div>
 
     <div class="action-grid">
@@ -116,19 +160,25 @@
     </div>
 </div>
 
+<div id="memberModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>👥 成員名單管理</h3>
+        <div id="memberListContent" style="max-height:300px; overflow-y:auto;">載入中...</div>
+        <div style="text-align:right; margin-top:15px;">
+            <button onclick="document.getElementById('memberModal').style.display='none'" style="padding:8px 15px;">關閉</button>
+        </div>
+    </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, orderBy, limit, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-    // ==========================================
-    // 1. 設定區
-    // ==========================================
-    // ⚠️ 請填入您的 Firebase Config
+    // 1. Firebase Config (請填入)
     const firebaseConfig = {
         apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
         authDomain: "jamielove-map.firebaseapp.com",
@@ -138,13 +188,9 @@
         appId: "1:971633917617:web:95c1b6c57ebc3a530bac90",
     };
 
-    // ⚠️⚠️⚠️ 關鍵：設定管理員 UID 列表 ⚠️⚠️⚠️
-    // 請將您的 Google UID 填入此陣列，只有這些人會看到管理介面
-    // 例如: const ADMIN_UIDS = ["AbCdEfGhIjKlMnOpQrStUvWxYz12"];
+    // 2. 管理員名單 (請填入 UID)
     const ADMIN_UIDS = ["oy3ypKCGLYP3vh5saQlWWuFjktB3"]; 
 
-
-    // Firebase 初始化
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
@@ -155,42 +201,32 @@
     L.control.zoom({ position: 'topright' }).addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);
 
-    // 全域變數
     let currentUser = null;
     let userMarker = null;
-    let teammates = {}; 
-    let teammateTrails = {}; // 存放隊友軌跡線
-    let gpxLayer = null;     // 存放 GPX 路線層
+    let teammates = {};
+    let teammateTrails = {};
+    let gpxLayer = null;
 
-    // ==========================================
-    // 2. 核心邏輯：權限與登入
-    // ==========================================
+    // --- 權限與登入 ---
     window.googleLogin = () => {
-        if(currentUser) {
-             if(confirm("確定要登出嗎？")) signOut(auth).then(()=>location.reload());
-        } else {
-            signInWithPopup(auth, provider).catch(err => alert(err.message));
-        }
+        if(!currentUser) signInWithPopup(auth, provider).catch(err => alert(err.message));
     };
+    window.googleLogout = () => signOut(auth).then(()=>location.reload());
 
     onAuthStateChanged(auth, (user) => {
         const btn = document.getElementById('userBtn');
         if (user) {
             currentUser = user;
             btn.innerHTML = `<img src="${user.photoURL}" style="width:20px;border-radius:50%"> ${user.displayName}`;
-            
-            // 🔥 關鍵權限判斷 🔥
             if (ADMIN_UIDS.includes(user.uid)) {
-                // 如果是管理員，在 body 加上識別類別，CSS 會自動顯示隱藏元素
                 document.body.classList.add('is-admin');
-                console.log("管理員模式已啟用");
-                listenToLogs(); // 只有管理員需要監聽日誌
+                listenToSystemLogs();
             } else {
                 document.body.classList.remove('is-admin');
             }
-
             startTracking();
             listenToTeammates();
+            listenToChat(); // 啟動聊天室
         } else {
             currentUser = null;
             btn.innerHTML = "👤 登入";
@@ -198,161 +234,22 @@
         }
     });
 
-    // ==========================================
-    // 3. 功能實作
-    // ==========================================
-
-    // --- A. GPX 路線功能 (管理員用) ---
+    // --- A. GPX 匯入修復版 ---
     window.triggerGpxUpload = () => document.getElementById('gpxUpload').click();
-    window.clearGpxRoute = () => {
-        if(gpxLayer) { map.removeLayer(gpxLayer); gpxLayer = null; }
-    };
-    
+    window.clearGpxRoute = () => { if(gpxLayer){ map.removeLayer(gpxLayer); gpxLayer=null; } };
+
     document.getElementById('gpxUpload').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
-        // 清除舊路線
-        clearGpxRoute();
-        // 使用 Leaflet-GPX 解析並繪製
-        gpxLayer = new L.GPX(file, {
+        window.clearGpxRoute();
+        
+        // 使用 URL.createObjectURL 解決本地路徑問題
+        const url = URL.createObjectURL(file);
+        
+        gpxLayer = new L.GPX(url, {
             async: true,
             marker_options: { startIconUrl: null, endIconUrl: null, shadowUrl: null },
-            polyline_options: { color: 'red', opacity: 0.8, weight: 5 } // 紅色粗線
+            polyline_options: { color: 'red', opacity: 0.8, weight: 6 }
         }).on('loaded', function(e) {
-            map.fitBounds(e.target.getBounds()); // 自動縮放到路線範圍
-        }).addTo(map);
-        toggleMenu('manageMenu'); // 關閉選單
-    });
-
-
-    // --- B. GPS 定位與軌跡 ---
-    function startTracking() {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.watchPosition((pos) => {
-            const { latitude, longitude } = pos.coords;
-            const now = new Date().getTime();
-            
-            // 更新自己的位置與地圖中心
-            if (!userMarker) {
-                userMarker = L.marker([latitude, longitude], {icon: getIcon('blue'), zIndexOffset: 1000}).addTo(map);
-                map.setView([latitude, longitude], 16);
-            } else {
-                userMarker.setLatLng([latitude, longitude]);
-            }
-
-            // 寫入資料庫 (包含軌跡紀錄)
-            // 注意：這裡簡化處理，每次都寫入新的座標點到一個子集合，以建立軌跡
-            addDoc(collection(db, `teams/${currentUser.uid}/history`), {
-                lat: latitude, lng: longitude, timestamp: now
-            });
-
-            // 同時更新主要狀態
-            setDoc(doc(db, "teams", currentUser.uid), {
-                name: currentUser.displayName, lat: latitude, lng: longitude,lastUpdate: now
-            }, { merge: true });
-
-        }, err => console.error(err), { enableHighAccuracy: true });
-    }
-
-    // --- C. 監聽隊友與繪製軌跡 ---
-    function listenToTeammates() {
-        onSnapshot(collection(db, "teams"), (snap) => {
-            snap.forEach(docSnapshot => {
-                if(docSnapshot.id === currentUser.uid) return;
-                updateTeammate(docSnapshot.id, docSnapshot.data());
-                // 監聽該隊友的軌跡歷史
-                listenToTrail(docSnapshot.id);
-            });
-        });
-    }
-
-    function updateTeammate(uid, data) {
-        const popupHtml = `<b>${data.name}</b><br><span style="color:red">${data.status||'待命'}</span><br>${data.statusTime||''}`;
-        if(teammates[uid]) {
-            teammates[uid].setLatLng([data.lat, data.lng]).setPopupContent(popupHtml);
-        } else {
-            teammates[uid] = L.marker([data.lat, data.lng], {icon: getIcon('green')}).addTo(map).bindPopup(popupHtml);
-        }
-    }
-
-    // 繪製隊友軌跡 (讀取最近 30 個點)
-    function listenToTrail(uid) {
-        const q = query(collection(db, `teams/${uid}/history`), orderBy("timestamp", "desc"), limit(30));
-        onSnapshot(q, (snap) => {
-            const trailPoints = [];
-            snap.forEach(doc => {
-                const d = doc.data();
-                trailPoints.unshift([d.lat, d.lng]); // 加到陣列開頭，確保順序正確
-            });
-            
-            if (teammateTrails[uid]) map.removeLayer(teammateTrails[uid]);
-            // 繪製綠色虛線軌跡
-            if (trailPoints.length > 1) {
-                teammateTrails[uid] = L.polyline(trailPoints, {color: 'green', dashArray: '5, 10', weight: 3, opacity: 0.6}).addTo(map);
-            }
-        });
-    }
-
-    // --- D. 狀態更新 (發送訊息) ---
-    window.updateStatus = async (status) => {
-        if (!currentUser || !userMarker) return alert("請先登入並等待定位");
-        const pos = userMarker.getLatLng();
-        const nowStr = new Date().toLocaleTimeString();
-        
-        // 更新個人狀態
-        await setDoc(doc(db, "teams", currentUser.uid), { status: status, statusTime: nowStr }, { merge: true });
-        // 寫入全域日誌 (給管理員看)
-        await addDoc(collection(db, "logs"), {
-            uid: currentUser.uid, name: currentUser.displayName, msg: status,
-            coord: `${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`, timestamp: new Date().getTime()
-        });
-    };
-
-    // --- E. 管理員功能：監聽日誌與匯出 ---
-    function listenToLogs() {
-        const q = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50));
-        onSnapshot(q, (snapshot) => {
-            const box = document.getElementById('messageBox');
-            box.innerHTML = "";
-            snapshot.forEach((doc) => {
-                const d = doc.data();
-                const time = new Date(d.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                box.innerHTML += `<div style="border-bottom:1px solid #555;padding:2px 0;"><span style="color:gold">[${time}]</span> <span style="color:#87ceeb">${d.name}</span>: ${d.msg} <span style="font-size:10px;color:#ccc">(${d.coord})</span></div>`;
-            });
-        });
-    }
-
-    window.exportCSV = async () => {
-        const querySnapshot = await getDocs(collection(db, "logs"));
-        let csv = "時間,人員,狀態,座標\n";
-        querySnapshot.forEach((d) => {
-            const data = d.data();
-            csv += `${new Date(data.timestamp).toLocaleString()},${data.name},${data.msg},"${data.coord}"\n`;
-        });
-        downloadFile(csv, `戰術紀錄.csv`);
-    };
-
-    // ==========================================
-    // 4. 輔助函式
-    // ==========================================
-    window.toggleMenu = (id) => document.getElementById(id).classList.toggle('show');
-    map.on('click', () => document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')));
-    window.locateMe = () => userMarker ? map.setView(userMarker.getLatLng(), 16) : alert("定位中...");
-    
-    function getIcon(color) {
-        return L.divIcon({
-            className: 'custom-icon',
-            html: `<div style="background:${color};width:14px;height:14px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px #000;"></div>`,
-            iconSize: [18, 18]
-        });
-    }
-    function downloadFile(content, fileName) {
-        const blob = new Blob(["\uFEFF"+content], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = fileName;
-        link.click();
-    }
-</script>
-</body>
-</html>
+            map.fitBounds(e.target.getBounds());
+        }).on('error', function(e) {
