@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>捷米樂單車賽事調度板</title>
+    <title>捷米樂單車賽事調度板 (Google Auth版)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -16,9 +17,9 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
         body { overflow: hidden; background-color: #222; }
 
-        /* --- 地圖與介面層級 --- */
+        /* --- 地圖與介面 --- */
         #map { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; }
-        .leaflet-top { top: 60px; } /* 避開上方導覽列 */
+        .leaflet-top { top: 60px; }
 
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -29,39 +30,44 @@
 
         /* 上方導覽列 */
         .top-bar {
-            background: rgba(255,255,255,0.9); padding: 8px;
-            display: flex; justify-content: space-between; gap: 5px;
+            background: rgba(255,255,255,0.95); padding: 8px;
+            display: flex; justify-content: space-between; gap: 8px;
             height: 60px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .top-btn {
             flex: 1; border: none; border-radius: 5px;
-            font-weight: bold; font-size: 15px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            text-decoration: none; color: #333; border: 1px solid #ccc;
+            font-weight: bold; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            text-decoration: none; color: #333; border: 1px solid #ccc; background: white;
+            transition: background 0.2s;
         }
-        .btn-menu { background-color: #f5f5f5; }
+        .top-btn:active { transform: translateY(2px); }
+        .btn-menu { background-color: #f8f9fa; }
         .btn-zello { background-color: #ff9800; color: white; border-color: #e65100; }
         .btn-chat { background-color: #fff; }
         .btn-login { background-color: #d32f2f; color: white; border-color: #b71c1c; }
 
-        /* GPS 懸浮按鈕 */
+        /* GPS 鈕 */
         .gps-float-btn {
             position: absolute; top: 80px; right: 15px;
             width: 50px; height: 50px;
             background-color: white; border: 2px solid #ccc; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 30;
-            font-size: 40px; line-height: 1; font-weight: 300; color: #333; padding-bottom: 4px; 
+            font-size: 24px; color: #333; 
         }
         .gps-float-btn:active { background-color: #eee; }
 
-        /* 頭像與下拉選單 */
+        /* 頭像與選單 */
         .user-avatar-icon {
             background-color: #2196f3; color: white; border: 2px solid white;
             border-radius: 50%; text-align: center; line-height: 36px;
             font-weight: bold; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
             width: 36px !important; height: 36px !important;
+            overflow: hidden;
         }
+        .user-avatar-icon img { width: 100%; height: 100%; object-fit: cover; }
+
         .dropdown-menu {
             position: absolute; top: 70px; left: 10px; 
             background: white; border-radius: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
@@ -69,11 +75,11 @@
             overflow: hidden; max-height: 70vh; overflow-y: auto; z-index: 40;
         }
         .menu-group-title { background-color: #eee; font-size: 13px; color: #666; padding: 8px 12px; font-weight: bold; }
-        .dropdown-menu div, .dropdown-menu label { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 16px; }
+        .dropdown-menu div, .dropdown-menu label { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 16px; display: flex; align-items: center; gap: 10px; }
         .dropdown-menu div:hover { background-color: #f9f9f9; }
         .text-danger { color: #d32f2f; }
 
-        /* 聊天室視窗 */
+        /* 聊天室 */
         .chat-window {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 90%; max-width: 450px; height: 50vh;
@@ -125,31 +131,41 @@
 
     <div id="ui-layer">
         <div class="top-bar pointer-auto">
-            <button id="menuBtn" class="top-btn btn-menu" onclick="toggleMenu()">?? 選單</button>
-            <a href="zello://?freq&name=JamieBikeTeam" class="top-btn btn-zello">無線電</a>
-            <button class="top-btn btn-chat" onclick="toggleChat()">?? 聊天</button>
-            <button id="loginBtn" class="top-btn btn-login" onclick="handleLogin()">?? 登入</button>
+            <button id="menuBtn" class="top-btn btn-menu" onclick="toggleMenu()">
+                <i class="fa-solid fa-gear"></i> 選單
+            </button>
+            <a href="zello://?freq&name=JamieBikeTeam" class="top-btn btn-zello">
+                <i class="fa-solid fa-walkie-talkie"></i> 無線電
+            </a>
+            <button class="top-btn btn-chat" onclick="toggleChat()">
+                <i class="fa-solid fa-comments"></i> 聊天
+            </button>
+            <button id="loginBtn" class="top-btn btn-login" onclick="handleGoogleLogin()">
+                <i class="fa-brands fa-google"></i> 登入
+            </button>
         </div>
 
-        <button class="gps-float-btn pointer-auto" onclick="locateUser()" title="定位我的位置">＋</button>
+        <button class="gps-float-btn pointer-auto" onclick="locateUser()" title="定位我的位置">
+            <i class="fa-solid fa-crosshairs"></i>
+        </button>
 
         <div id="dropdownList" class="dropdown-menu pointer-auto">
             <div class="menu-group-title">人員管理</div>
-            <div onclick="changeNickname()">?? 修改顯示暱稱</div>
-            <div class="text-danger" onclick="removeMember()">? 移除成員</div>
+            <div onclick="changeNickname()"><i class="fa-solid fa-pen"></i> 修改顯示暱稱</div>
+            <div class="text-danger" onclick="removeMember()"><i class="fa-solid fa-user-slash"></i> 移除成員</div>
             
             <div class="menu-group-title">地圖管理</div>
-            <label for="gpxInput">?? 匯入 GPX 軌跡</label>
+            <label for="gpxInput"><i class="fa-solid fa-folder-open"></i> 匯入 GPX 軌跡</label>
             <input type="file" id="gpxInput" accept=".gpx" onchange="loadGPX(this)">
-            <div class="text-danger" onclick="removeGPX()">? 清除 GPX 軌跡</div>
+            <div class="text-danger" onclick="removeGPX()"><i class="fa-solid fa-trash-can"></i> 清除 GPX 軌跡</div>
 
             <div class="menu-group-title">聊天室管理</div>
-            <div onclick="exportChatXLS()">?? 匯出聊天紀錄 (XLS)</div>
-            <div class="text-danger" onclick="clearChat()">??? 清空聊天紀錄</div>
+            <div onclick="exportChatXLS()"><i class="fa-solid fa-file-excel"></i> 匯出聊天紀錄 (XLS)</div>
+            <div class="text-danger" onclick="clearChat()"><i class="fa-solid fa-eraser"></i> 清空聊天紀錄</div>
 
             <div class="menu-group-title">訊息牆管理</div>
-            <div onclick="editAnnouncement()">?? 發布/編輯公告</div>
-            <div onclick="exportWallLogXLS()">?? 匯出公告紀錄 (XLS)</div>
+            <div onclick="editAnnouncement()"><i class="fa-solid fa-bullhorn"></i> 發布/編輯公告</div>
+            <div onclick="exportWallLogXLS()"><i class="fa-solid fa-file-contract"></i> 匯出公告紀錄 (XLS)</div>
             
             <div style="text-align:center; background:#eee; padding:15px;" onclick="toggleMenu()">▲ 關閉選單</div>
         </div>
@@ -161,15 +177,15 @@
             </div>
             <div class="chat-body" id="chatBody"></div>
             <div class="chat-input-area">
-                <button class="btn-img" onclick="insertImage()" title="插入圖片">??</button>
+                <button class="btn-img" onclick="insertImage()" title="插入圖片"><i class="fa-regular fa-image"></i></button>
                 <input type="text" id="msgInput" placeholder="輸入訊息...">
-                <button class="btn-send" onclick="sendMsg()">傳送</button>
+                <button class="btn-send" onclick="sendMsg()"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </div>
 
         <div class="bottom-area pointer-auto">
             <div id="adminPrivateWall" class="admin-private-wall"></div>
-            <div id="publicAnnouncement" class="public-announcement">?? 公告：系統連線中...</div>
+            <div id="publicAnnouncement" class="public-announcement">📢 公告：系統連線中...</div>
             <div class="status-bar">
                 <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
                 <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
@@ -183,7 +199,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
 
     <script>
-        // --- 1. Firebase 設定區 (重要：請填入您的 Firebase Config) ---
+        // --- 1. Firebase Config (請替換為您的) ---
         const firebaseConfig = {
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
             authDomain: "jamielove-map.firebaseapp.com",
@@ -194,20 +210,19 @@
             appId: "1:971633917617:web:95c1b6c57ebc3a530bac90",
         };
 
-        // 初始化 Firebase
         if (typeof firebase !== 'undefined' && !firebase.apps.length) {
             try {
                 firebase.initializeApp(firebaseConfig);
                 var db = firebase.database();
                 var auth = firebase.auth();
-                console.log("Firebase initialized successfully");
+                var provider = new firebase.auth.GoogleAuthProvider();
             } catch (e) {
-                console.error("Firebase init error:", e);
-                alert("Firebase 連線錯誤，請檢查 Config 設定。");
+                console.error("Firebase Init Error:", e);
+                alert("Firebase 設定錯誤，請檢查程式碼。");
             }
         }
 
-        // --- 2. 音效系統 (Web Audio API) ---
+        // --- 2. 音效系統 ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContext();
 
@@ -216,10 +231,10 @@
             const now = audioCtx.currentTime;
             const masterGain = audioCtx.createGain();
             masterGain.connect(audioCtx.destination);
-            masterGain.gain.setValueAtTime(0.3, now); // 統一音量
+            masterGain.gain.setValueAtTime(0.3, now);
 
             if (type === 'dingdong') {
-                // 成員登入 & 訊息公告：叮咚 (門鈴聲)
+                // 成員登入/公告：門鈴
                 let osc1 = audioCtx.createOscillator(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(659.25, now);
                 let gain1 = audioCtx.createGain(); gain1.gain.setValueAtTime(0.5, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
                 osc1.connect(gain1).connect(masterGain); osc1.start(now); osc1.stop(now + 1.2);
@@ -229,21 +244,19 @@
                 osc2.connect(gain2).connect(masterGain); osc2.start(now + 0.6); osc2.stop(now + 2.0);
 
             } else if (type === 'msn') {
-                // 聊天訊息：MSN 登登
+                // 聊天：MSN
                 let osc1 = audioCtx.createOscillator(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(1000, now);
                 let gain1 = audioCtx.createGain(); gain1.gain.setValueAtTime(0.4, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
                 osc1.connect(gain1).connect(masterGain); osc1.start(now); osc1.stop(now + 0.15);
-
                 let osc2 = audioCtx.createOscillator(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(1200, now + 0.15);
                 let gain2 = audioCtx.createGain(); gain2.gain.setValueAtTime(0.4, now + 0.15); gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
                 osc2.connect(gain2).connect(masterGain); osc2.start(now + 0.15); osc2.stop(now + 0.4);
 
             } else if (type === 'bikebell') {
-                // 四功能鍵：腳踏車鈴
+                // 功能鍵：車鈴
                 let osc1 = audioCtx.createOscillator(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(2500, now);
                 let gain1 = audioCtx.createGain(); gain1.gain.setValueAtTime(0.3, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
                 osc1.connect(gain1).connect(masterGain); osc1.start(now); osc1.stop(now + 0.8);
-
                 let osc2 = audioCtx.createOscillator(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(2800, now + 0.15);
                 let gain2 = audioCtx.createGain(); gain2.gain.setValueAtTime(0.3, now + 0.15); gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
                 osc2.connect(gain2).connect(masterGain); osc2.start(now + 0.15); osc2.stop(now + 1.0);
@@ -252,56 +265,94 @@
 
         // --- 3. 全域變數 ---
         var map = L.map('map', { zoomControl: true }).setView([24.1477, 120.6736], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'c OpenStreetMap' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
         let isAdmin = false;
         let isChatOpen = false;
         let currentGpxLayer = null;
         let myUid = null;
-        let userNickname = "隊員";
+        let userNickname = "訪客";
         let markers = {}; 
 
-        // --- 4. 系統初始化與監聽 ---
+        // --- 4. 初始化 ---
         window.onload = function() {
-            if (typeof firebase === 'undefined') {
-                alert("Firebase SDK 未正確載入，請檢查網路。");
-                return;
-            }
-
-            // 匿名登入
-            auth.signInAnonymously().catch(function(error) {
-                console.error("Auth Error", error);
-                alert("無法連線至 Firebase，請檢查 Config 設定。");
-            });
-
             // 監聽登入狀態
             auth.onAuthStateChanged(function(user) {
                 if (user) {
+                    // 已登入
                     myUid = user.uid;
+                    userNickname = user.displayName || "隊員";
+                    document.getElementById('loginBtn').innerHTML = `<i class="fa-solid fa-right-from-bracket"></i> 登出`;
+                    
+                    // 登入後提示輸入管理員密碼 (使用者要求的流程)
+                    checkAdminPassword();
+
+                    // 更新 DB 資訊
+                    db.ref('users/' + myUid).update({
+                        nickname: userNickname,
+                        photo: user.photoURL,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+
+                    playSound('dingdong');
                     checkIfBanned();
                     initListeners();
-                    
-                    let name = prompt("請輸入您的暱稱 (將顯示於地圖上)：", "隊員-" + myUid.substring(0,4));
-                    if(name) {
-                        userNickname = name;
-                        playSound('dingdong'); // 成員登入：叮咚
-                        db.ref('users/' + myUid).update({
-                            nickname: userNickname,
-                            lastSeen: firebase.database.ServerValue.TIMESTAMP
-                        });
-                    }
+                } else {
+                    // 未登入
+                    document.getElementById('loginBtn').innerHTML = `<i class="fa-brands fa-google"></i> 登入`;
                 }
             });
 
+            // Enter 鍵發送
             document.getElementById('msgInput').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') sendMsg();
             });
-
             document.body.addEventListener('click', function() { if(audioCtx.state === 'suspended') audioCtx.resume(); }, {once:true});
         };
 
+        // --- 登入流程 ---
+        function handleGoogleLogin() {
+            if (myUid) {
+                // 已登入 -> 執行登出
+                auth.signOut().then(() => {
+                    alert("已登出");
+                    location.reload();
+                });
+            } else {
+                // 未登入 -> 執行 Google 登入
+                auth.signInWithPopup(provider).catch(error => {
+                    console.error("Login Error:", error);
+                    alert("登入失敗: " + error.message);
+                });
+            }
+        }
+
+        // 登入成功後詢問密碼
+        function checkAdminPassword() {
+            // 延遲一下讓 UX 順暢
+            setTimeout(() => {
+                let input = prompt("歡迎 " + userNickname + "！\n若您是管理員，請輸入密碼 (一般成員請按取消)：");
+                const btn = document.getElementById('loginBtn');
+                const menuBtn = document.getElementById('menuBtn');
+                const adminWall = document.getElementById('adminPrivateWall');
+
+                if (input === "Fire_Fire_54889427") {
+                    isAdmin = true;
+                    alert("管理員權限已啟動！");
+                    btn.classList.replace("btn-login", "btn-zello"); // 變色示意
+                    menuBtn.innerHTML = `<i class="fa-solid fa-wrench"></i> 管理`;
+                    toggleMenu(); // 自動開啟選單
+                    adminWall.style.display = "block";
+                } else {
+                    isAdmin = false;
+                    // 一般成員
+                }
+            }, 500);
+        }
+
+        // --- 監聽器 ---
         function initListeners() {
-            // 監聽成員位置
+            // 成員位置
             db.ref('users').on('value', (snapshot) => {
                 const users = snapshot.val() || {};
                 Object.keys(users).forEach(uid => {
@@ -322,7 +373,7 @@
                     }
                 });
                 
-                // 移除離線成員標記
+                // 移除不存在的
                 Object.keys(markers).forEach(uid => {
                     if (!users[uid] && uid !== 'me') {
                         map.removeLayer(markers[uid]);
@@ -331,26 +382,25 @@
                 });
             });
 
-            // 監聽聊天 (最近50筆)
+            // 聊天
             db.ref('chat').limitToLast(50).on('child_added', (snapshot) => {
                 const msg = snapshot.val();
                 renderMessage(msg);
-                // 避免初始化時一次播放太多聲，可加時間判斷，這裡直接播
                 if (Date.now() - msg.timestamp < 10000) {
-                    if (msg.type === "announcement") playSound('dingdong'); // 公告：叮咚
-                    else playSound('msn'); // 聊天：MSN
+                    if (msg.type === "announcement") playSound('dingdong');
+                    else playSound('msn');
                 }
             });
 
-            // 監聽公告
+            // 公告
             db.ref('announcement').on('value', (snapshot) => {
                 const val = snapshot.val();
                 if (val) {
-                    document.getElementById('publicAnnouncement').innerText = "?? " + val.text;
+                    document.getElementById('publicAnnouncement').innerText = "📢 " + val.text;
                 }
             });
 
-            // 監聽封鎖
+            // 封鎖檢查
             db.ref('banned/' + myUid).on('value', (snapshot) => {
                 if (snapshot.exists()) {
                     alert("您已被管理員移除。");
@@ -361,15 +411,16 @@
         }
 
         function checkIfBanned() {
+            if(!myUid) return;
             db.ref('banned/' + myUid).once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     alert("此帳號已被封鎖");
-                    location.reload();
+                    auth.signOut();
                 }
             });
         }
 
-        // --- 5. 互動功能 ---
+        // --- 介面功能 ---
         function changeNickname() {
             let name = prompt("修改暱稱：", userNickname);
             if(name) {
@@ -412,9 +463,13 @@
             menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        function locateUser() { map.locate({setView: true, maxZoom: 16}); }
+        function locateUser() { 
+            if(!myUid) { alert("請先登入"); return; }
+            map.locate({setView: true, maxZoom: 16}); 
+        }
 
         map.on('locationfound', function(e) {
+            if(!myUid) return;
             db.ref('users/' + myUid).update({
                 lat: e.latlng.lat, lng: e.latlng.lng,
                 lastSeen: firebase.database.ServerValue.TIMESTAMP
@@ -438,33 +493,8 @@
             });
         }
 
-        function handleLogin() {
-            const btn = document.getElementById('loginBtn');
-            const menuBtn = document.getElementById('menuBtn');
-            const adminWall = document.getElementById('adminPrivateWall');
-            
-            if (!isAdmin) {
-                let input = prompt("請輸入管理員密碼", "");
-                if (input === "Fire_Fire_54889427") {
-                    isAdmin = true;
-                    playSound('dingdong'); // 管理員登入：叮咚
-                    alert("管理員登入成功");
-                    btn.innerText = "登出"; btn.style.backgroundColor = "#333";
-                    menuBtn.innerHTML = "?? 管理";
-                    toggleMenu();
-                    adminWall.style.display = "block";
-                } else { alert("密碼錯誤"); }
-            } else {
-                isAdmin = false;
-                alert("已登出");
-                btn.innerText = "?? 登入"; btn.style.backgroundColor = "#d32f2f";
-                menuBtn.innerHTML = "?? 選單";
-                document.getElementById('dropdownList').style.display = 'none';
-                adminWall.style.display = "none";
-            }
-        }
-
         function sendMsg(customText = null, isAnnouncement = false) {
+            if(!myUid) { alert("請先登入才能發言"); return; }
             const input = document.getElementById('msgInput');
             let text = customText || input.value;
             
@@ -494,7 +524,7 @@
             div.dataset.content = msg.text;
 
             if (msg.type === "announcement") {
-                div.innerHTML = `<div style="background:#ffeb3b; color:black; padding:5px; border-radius:4px; font-weight:bold; font-size:13px;">?? [公告 ${timeStr}] ${msg.text}</div>`;
+                div.innerHTML = `<div style="background:#ffeb3b; color:black; padding:5px; border-radius:4px; font-weight:bold; font-size:13px;">📢 [公告 ${timeStr}] ${msg.text}</div>`;
             } else {
                 let color = (msg.role === "admin") ? "#ffeb3b" : "#aaa";
                 let content = msg.text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
@@ -510,15 +540,12 @@
         }
 
         function setStatus(btn, statusText, colorCode) {
+            if(!myUid) { alert("請先登入"); return; }
             document.querySelectorAll('.status-bar .status-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            playSound('bikebell'); // 功能鍵：腳踏車鈴
+            playSound('bikebell'); 
 
-            db.ref('users/' + myUid).update({
-                status: statusText,
-                color: colorCode
-            });
-            
+            db.ref('users/' + myUid).update({ status: statusText, color: colorCode });
             logToAdmin(`${userNickname}: ${statusText}`);
         }
 
