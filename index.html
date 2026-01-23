@@ -3,253 +3,588 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>捷米樂戰術系統 v3.1</title>
+    <title>捷米樂單車賽事調度板</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
     <style>
         /* --- 基礎設定 --- */
-        body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; background: #222; overflow: hidden; }
-        #map { height: 100vh; width: 100vw; z-index: 1; }
-        
-        /* --- 通用 UI --- */
-        .float-btn {
-            background: rgba(255, 255, 255, 0.95); border: 1px solid #ccc; border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; font-weight: bold; color: #333;
-            padding: 8px 12px; font-size: 14px; display: flex; align-items: center; gap: 5px; pointer-events: auto;
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
+        body { overflow: hidden; background-color: #222; }
+
+        /* --- 地圖與介面層級 --- */
+        #map { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; }
+        .leaflet-top { top: 60px; } /* 避開上方導覽列 */
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .pointer-auto { pointer-events: auto; }
+
+        /* 上方導覽列 */
+        .top-bar {
+            background: rgba(255,255,255,0.9); padding: 8px;
+            display: flex; justify-content: space-between; gap: 5px;
+            height: 60px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .top-btn {
+            flex: 1; border: none; border-radius: 5px;
+            font-weight: bold; font-size: 15px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; color: #333; border: 1px solid #ccc;
+        }
+        .btn-menu { background-color: #f5f5f5; }
+        .btn-zello { background-color: #ff9800; color: white; border-color: #e65100; }
+        .btn-chat { background-color: #fff; }
+        .btn-login { background-color: #d32f2f; color: white; border-color: #b71c1c; }
+
+        /* GPS 懸浮按鈕 */
+        .gps-float-btn {
+            position: absolute; top: 80px; right: 15px;
+            width: 50px; height: 50px;
+            background-color: white; border: 2px solid #ccc; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 30;
+            font-size: 40px; line-height: 1; font-weight: 300; color: #333; padding-bottom: 4px; 
+        }
+        .gps-float-btn:active { background-color: #eee; }
+
+        /* 頭像與下拉選單 */
+        .user-avatar-icon {
+            background-color: #2196f3; color: white; border: 2px solid white;
+            border-radius: 50%; text-align: center; line-height: 36px;
+            font-weight: bold; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            width: 36px !important; height: 36px !important;
         }
         .dropdown-menu {
-            display: none; position: absolute; top: 100%; left: 0; background: white;
-            border-radius: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 180px; overflow: hidden; margin-top: 5px;
+            position: absolute; top: 70px; left: 10px; 
+            background: white; border-radius: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: none; flex-direction: column; width: 260px;
+            overflow: hidden; max-height: 70vh; overflow-y: auto; z-index: 40;
         }
-        .dropdown-menu.show { display: block; }
-        .dropdown-item { padding: 10px; border-bottom: 1px solid #eee; color: #333; cursor: pointer; font-size: 13px; }
-        .dropdown-item:active { background: #f0f0f0; }
+        .menu-group-title { background-color: #eee; font-size: 13px; color: #666; padding: 8px 12px; font-weight: bold; }
+        .dropdown-menu div, .dropdown-menu label { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 16px; }
+        .dropdown-menu div:hover { background-color: #f9f9f9; }
+        .text-danger { color: #d32f2f; }
 
-        /* --- 版面配置 --- */
-        .top-left-panel { position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; gap: 10px; }
-        .top-right-panel { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
-        
-        /* (修改) GPS 按鈕加大 */
-        .gps-btn {
-            width: 60px; height: 60px; border-radius: 15px; /* 方形圓角 */
-            justify-content: center; font-size: 32px; /* 圖示變大 */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-            border: 2px solid #fff; background: rgba(0, 123, 255, 0.9); color: white;
+        /* 聊天室視窗 */
+        .chat-window {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; max-width: 450px; height: 50vh;
+            background: rgba(30, 30, 30, 0.98); border-radius: 8px; color: white;
+            display: none; flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 50; border: 1px solid #555;
         }
-
-        /* (修改) 左側聊天室面板 */
-        .left-chat-panel {
-            position: absolute; top: 70px; left: 10px; z-index: 999;
-            width: 260px; background: rgba(30, 30, 30, 0.9); 
-            border: 1px solid #555; border-radius: 10px; 
-            display: flex; flex-direction: column;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.6);
-            height: 40vh; /* 高度佔螢幕 40% */
-            transition: height 0.3s;
-        }
-        .chat-header {
-            padding: 8px; background: #007bff; color: white; border-top-left-radius: 10px; border-top-right-radius: 10px;
-            font-size: 13px; font-weight: bold; display: flex; justify-content: space-between;
-        }
-        .chat-messages {
-            flex: 1; overflow-y: auto; padding: 10px; font-size: 12px; color: #fff;
-            display: flex; flex-direction: column; gap: 5px;
-        }
-        .chat-msg-row { word-break: break-all; }
-        .chat-input-area {
-            padding: 5px; border-top: 1px solid #555; display: flex; gap: 5px;
-        }
-        .chat-input {
-            flex: 1; background: #222; border: 1px solid #555; color: white; padding: 5px; border-radius: 4px;
-        }
-        .chat-send-btn {
-            background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;
-        }
+        .chat-header { background: #1976d2; padding: 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 16px; border-radius: 8px 8px 0 0;}
+        .chat-body { flex: 1; padding: 10px; overflow-y: auto; font-size: 14px; color: #ddd; word-break: break-all; }
+        .chat-body a { color: #4fc3f7; text-decoration: underline; }
+        .chat-body img { max-width: 100%; border-radius: 5px; margin-top: 5px; }
+        .chat-input-area { display: flex; padding: 10px; background: #222; border-radius: 0 0 8px 8px; align-items: center;}
+        .chat-input-area input { flex: 1; padding: 10px; border-radius: 4px; border: none; outline: none; font-size: 16px; }
+        .chat-input-area button { margin-left: 5px; border: none; padding: 8px 12px; border-radius: 4px; font-size: 14px; cursor: pointer; }
+        .btn-send { background: #43a047; color: white; }
+        .btn-img { background: #555; color: white; }
 
         /* 底部區域 */
-        .bottom-panel {
-            position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
-            background: linear-gradient(to top, rgba(0,0,0,0.9) 70%, transparent);
-            padding: 10px; display: flex; flex-direction: column; gap: 8px;
+        .bottom-area {
+            display: flex; flex-direction: column; gap: 5px; padding: 10px; padding-bottom: 25px; 
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
         }
+        .admin-private-wall {
+            background: rgba(13, 71, 161, 0.9); color: #fff; padding: 8px; border-radius: 5px; font-size: 14px;
+            display: none; border-left: 4px solid #00e5ff; margin-bottom: 5px; max-height: 80px; overflow-y: auto;
+        }
+        .public-announcement {
+            background: rgba(0, 0, 0, 0.85); color: #ffeb3b; padding: 12px; border-radius: 5px; font-size: 16px;
+            text-align: center; display: block; border: 2px solid #fbc02d;
+            box-shadow: 0 0 10px rgba(255, 235, 59, 0.2); font-weight: bold; text-shadow: 1px 1px 2px black;
+        }
+        .status-bar { display: flex; gap: 8px; height: 70px; }
+        .status-btn {
+            flex: 1; border: none; color: white; font-weight: bold; font-size: 18px;
+            border-radius: 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.4); opacity: 0.7; transition: all 0.2s;
+        }
+        .st-going { background-color: #d32f2f; }
+        .st-arrived { background-color: #fbc02d; color: black; }
+        .st-fixing { background-color: #388e3c; }
+        .st-done { background-color: #1976d2; }
+        .status-btn.active { opacity: 1; transform: scale(1.05); box-shadow: 0 0 15px rgba(255,255,255,0.8); border: 3px solid white; z-index: 5; }
 
-        /* 權限控制 */
-        .admin-only { display: none !important; }
-        body.is-admin .admin-only { display: block !important; }
-        
-        /* 管理員專屬：系統日誌 (底部藍色) */
-        #systemLogBox {
-            background: rgba(33, 76, 116, 0.9); border: 1px solid #4a90e2; border-radius: 5px;
-            height: 100px; overflow-y: auto; padding: 5px 10px; font-size: 12px; color: #fff; margin-bottom: 5px;
-        }
-
-        /* 戰術按鈕 */
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
-        .action-btn { border: none; padding: 15px 0; border-radius: 5px; font-weight: bold; color: white; font-size: 16px; cursor: pointer; }
-        .btn-red { background: #d32f2f; box-shadow: 0 0 10px #d32f2f; }
-        .btn-yellow { background: #fbc02d; color: #222; box-shadow: 0 0 10px #fbc02d; }
-        .btn-green { background: #388e3c; box-shadow: 0 0 10px #388e3c; }
-        .btn-blue { background: #1976d2; box-shadow: 0 0 10px #1976d2; }
-
-        /* 名單管理彈窗 */
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center;
-        }
-        .modal-box {
-            background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 10px; color: #333;
-        }
-        .member-list-item {
-            display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;
-        }
-        .del-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        #gpxInput { display: none; }
     </style>
 </head>
 <body>
 
-<div id="map"></div>
-<input type="file" id="gpxUpload" accept=".gpx" style="display: none;">
+    <div id="map"></div>
 
-<div class="top-left-panel">
-    <div style="position:relative;">
-        <button class="float-btn" onclick="toggleMenu('manageMenu')">⚙️ 管理選單</button>
-        <div id="manageMenu" class="dropdown-menu">
-            <div class="dropdown-item admin-only" onclick="triggerGpxUpload()">📂 匯入/更換 路線</div>
-            <div class="dropdown-item admin-only" onclick="clearGpxRoute()">🗑️ 清除所有路線</div>
-            <div class="dropdown-item admin-only" onclick="openMemberManager()">👥 成員名單管理</div>
-            <div class="dropdown-item admin-only" onclick="clearChat()">💬 清除聊天紀錄</div>
-            <div class="dropdown-item" onclick="alert('v3.1 Build 20260122')">ℹ️ 系統資訊</div>
+    <div id="ui-layer">
+        <div class="top-bar pointer-auto">
+            <button id="menuBtn" class="top-btn btn-menu" onclick="toggleMenu()">?? 選單</button>
+            <a href="zello://?freq&name=JamieBikeTeam" class="top-btn btn-zello">無線電</a>
+            <button class="top-btn btn-chat" onclick="toggleChat()">?? 聊天</button>
+            <button id="loginBtn" class="top-btn btn-login" onclick="handleLogin()">?? 登入</button>
+        </div>
+
+        <button class="gps-float-btn pointer-auto" onclick="locateUser()" title="定位我的位置">＋</button>
+
+        <div id="dropdownList" class="dropdown-menu pointer-auto">
+            <div class="menu-group-title">人員管理</div>
+            <div onclick="changeNickname()">?? 修改顯示暱稱</div>
+            <div class="text-danger" onclick="removeMember()">? 移除成員</div>
+            
+            <div class="menu-group-title">地圖管理</div>
+            <label for="gpxInput">?? 匯入 GPX 軌跡</label>
+            <input type="file" id="gpxInput" accept=".gpx" onchange="loadGPX(this)">
+            <div class="text-danger" onclick="removeGPX()">? 清除 GPX 軌跡</div>
+
+            <div class="menu-group-title">聊天室管理</div>
+            <div onclick="exportChatXLS()">?? 匯出聊天紀錄 (XLS)</div>
+            <div class="text-danger" onclick="clearChat()">??? 清空聊天紀錄</div>
+
+            <div class="menu-group-title">訊息牆管理</div>
+            <div onclick="editAnnouncement()">?? 發布/編輯公告</div>
+            <div onclick="exportWallLogXLS()">?? 匯出公告紀錄 (XLS)</div>
+            
+            <div style="text-align:center; background:#eee; padding:15px;" onclick="toggleMenu()">▲ 關閉選單</div>
+        </div>
+
+        <div id="chatWindow" class="chat-window pointer-auto">
+            <div class="chat-header">
+                <span>團隊聊天室 (Live)</span>
+                <span style="cursor:pointer; padding:0 10px; font-size:24px;" onclick="toggleChat()">×</span>
+            </div>
+            <div class="chat-body" id="chatBody"></div>
+            <div class="chat-input-area">
+                <button class="btn-img" onclick="insertImage()" title="插入圖片">??</button>
+                <input type="text" id="msgInput" placeholder="輸入訊息...">
+                <button class="btn-send" onclick="sendMsg()">傳送</button>
+            </div>
+        </div>
+
+        <div class="bottom-area pointer-auto">
+            <div id="adminPrivateWall" class="admin-private-wall"></div>
+            <div id="publicAnnouncement" class="public-announcement">?? 公告：系統連線中...</div>
+            <div class="status-bar">
+                <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
+                <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
+                <button class="status-btn st-fixing" onclick="setStatus(this, '維修中', '#388e3c')">維修中</button>
+                <button class="status-btn st-done" onclick="setStatus(this, '已完成', '#1976d2')">已完成</button>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="left-chat-panel">
-    <div class="chat-header">
-        <span>💬 團隊聊天室</span>
-        <span style="font-size:10px; opacity:0.8;">Live</span>
-    </div>
-    <div id="chatMessages" class="chat-messages">
-        <div style="color:#aaa; text-align:center; margin-top:20px;">載入中...</div>
-    </div>
-    <div class="chat-input-area">
-        <input type="text" id="chatInput" class="chat-input" placeholder="輸入訊息...">
-        <button class="chat-send-btn" onclick="sendChat()">傳送</button>
-    </div>
-</div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
 
-<div class="top-right-panel">
-    <div style="position:relative;">
-        <button id="userBtn" class="float-btn" onclick="toggleMenu('userMenu')">👤 登入</button>
-        <div id="userMenu" class="dropdown-menu right" style="left:auto; right:0;">
-            <div class="dropdown-item" onclick="googleLogin()">Google 登入</div>
-            <div class="dropdown-item" onclick="googleLogout()">登出</div>
-        </div>
-    </div>
-    <button class="float-btn gps-btn" onclick="locateMe()">⌖</button>
-</div>
+    <script>
+        // --- 1. Firebase 設定區 (重要：請填入您的 Firebase Config) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
+            authDomain: "jamielove-map.firebaseapp.com",
+            databaseURL: "https://您的專案ID.firebaseio.com",
+            projectId: "jamielove-map",
+            storageBucket: "jamielove-map.firebasestorage.app",
+            messagingSenderId: "971633917617",
+            appId: "1:971633917617:web:95c1b6c57ebc3a530bac90",
+        };
 
-<div class="bottom-panel">
-    <div id="systemLogBox" class="admin-only">
-        <div style="text-align:center;color:#aaa;padding-top:30px;">[系統日誌] 監聽中...</div>
-    </div>
-
-    <div class="action-grid">
-        <button class="action-btn btn-red" onclick="updateStatus('前往中')">前往中</button>
-        <button class="action-btn btn-yellow" onclick="updateStatus('已抵達')">已抵達</button>
-        <button class="action-btn btn-green" onclick="updateStatus('維修中')">維修中</button>
-        <button class="action-btn btn-blue" onclick="updateStatus('已完成')">已完成</button>
-    </div>
-</div>
-
-<div id="memberModal" class="modal-overlay">
-    <div class="modal-box">
-        <h3>👥 成員名單管理</h3>
-        <div id="memberListContent" style="max-height:300px; overflow-y:auto;">載入中...</div>
-        <div style="text-align:right; margin-top:15px;">
-            <button onclick="document.getElementById('memberModal').style.display='none'" style="padding:8px 15px;">關閉</button>
-        </div>
-    </div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, orderBy, limit, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    // 1. Firebase Config (請填入)
-    const firebaseConfig = {
-        apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
-        authDomain: "jamielove-map.firebaseapp.com",
-        projectId: "jamielove-map",
-        storageBucket: "jamielove-map.firebasestorage.app",
-        messagingSenderId: "971633917617",
-        appId: "1:971633917617:web:95c1b6c57ebc3a530bac90",
-    };
-
-    // 2. 管理員名單 (請填入 UID)
-    const ADMIN_UIDS = ["oy3ypKCGLYP3vh5saQlWWuFjktB3"]; 
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    // 地圖初始化
-    const map = L.map('map', { zoomControl: false }).setView([24.1512, 120.9324], 13);
-    L.control.zoom({ position: 'topright' }).addTo(map);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);
-
-    let currentUser = null;
-    let userMarker = null;
-    let teammates = {};
-    let teammateTrails = {};
-    let gpxLayer = null;
-
-    // --- 權限與登入 ---
-    window.googleLogin = () => {
-        if(!currentUser) signInWithPopup(auth, provider).catch(err => alert(err.message));
-    };
-    window.googleLogout = () => signOut(auth).then(()=>location.reload());
-
-    onAuthStateChanged(auth, (user) => {
-        const btn = document.getElementById('userBtn');
-        if (user) {
-            currentUser = user;
-            btn.innerHTML = `<img src="${user.photoURL}" style="width:20px;border-radius:50%"> ${user.displayName}`;
-            if (ADMIN_UIDS.includes(user.uid)) {
-                document.body.classList.add('is-admin');
-                listenToSystemLogs();
-            } else {
-                document.body.classList.remove('is-admin');
+        // 初始化 Firebase
+        if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                var db = firebase.database();
+                var auth = firebase.auth();
+                console.log("Firebase initialized successfully");
+            } catch (e) {
+                console.error("Firebase init error:", e);
+                alert("Firebase 連線錯誤，請檢查 Config 設定。");
             }
-            startTracking();
-            listenToTeammates();
-            listenToChat(); // 啟動聊天室
-        } else {
-            currentUser = null;
-            btn.innerHTML = "👤 登入";
-            document.body.classList.remove('is-admin');
         }
-    });
 
-    // --- A. GPX 匯入修復版 ---
-    window.triggerGpxUpload = () => document.getElementById('gpxUpload').click();
-    window.clearGpxRoute = () => { if(gpxLayer){ map.removeLayer(gpxLayer); gpxLayer=null; } };
+        // --- 2. 音效系統 (Web Audio API) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
 
-    document.getElementById('gpxUpload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        window.clearGpxRoute();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const masterGain = audioCtx.createGain();
+            masterGain.connect(audioCtx.destination);
+            masterGain.gain.setValueAtTime(0.3, now); // 統一音量
+
+            if (type === 'dingdong') {
+                // 成員登入 & 訊息公告：叮咚 (門鈴聲)
+                let osc1 = audioCtx.createOscillator(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(659.25, now);
+                let gain1 = audioCtx.createGain(); gain1.gain.setValueAtTime(0.5, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+                osc1.connect(gain1).connect(masterGain); osc1.start(now); osc1.stop(now + 1.2);
+
+                let osc2 = audioCtx.createOscillator(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(523.25, now + 0.6);
+                let gain2 = audioCtx.createGain(); gain2.gain.setValueAtTime(0.5, now + 0.6); gain2.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+                osc2.connect(gain2).connect(masterGain); osc2.start(now + 0.6); osc2.stop(now + 2.0);
+
+            } else if (type === 'msn') {
+                // 聊天訊息：MSN 登登
+                let osc1 = audioCtx.createOscillator(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(1000, now);
+                let gain1 = audioCtx.createGain(); gain1.gain.setValueAtTime(0.4, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc1.connect(gain1).connect(masterGain); osc1.start(now); osc1.stop(now + 0.15);
+
+                let osc2 = audioCtx.createOscillator(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(1200, now + 0.15);
+                let gain2 = audioCtx.createGain(); gain2.gain.setValueAtTime(0.4, now + 0.15); gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                osc2.connect(gain2).connect(masterGain); osc2.start(now + 0.15); osc2.stop(now + 0.4);
+
+            } else if (type === 'bikebell') {
+                // 四功能鍵：腳踏車鈴
+                let osc1 = audioCtx.createOscillator(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(2500, now);
+                let gain1 = audioCtx.createGain(); gain1.gain.setValueAtTime(0.3, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                osc1.connect(gain1).connect(masterGain); osc1.start(now); osc1.stop(now + 0.8);
+
+                let osc2 = audioCtx.createOscillator(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(2800, now + 0.15);
+                let gain2 = audioCtx.createGain(); gain2.gain.setValueAtTime(0.3, now + 0.15); gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+                osc2.connect(gain2).connect(masterGain); osc2.start(now + 0.15); osc2.stop(now + 1.0);
+            }
+        }
+
+        // --- 3. 全域變數 ---
+        var map = L.map('map', { zoomControl: true }).setView([24.1477, 120.6736], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'c OpenStreetMap' }).addTo(map);
+
+        let isAdmin = false;
+        let isChatOpen = false;
+        let currentGpxLayer = null;
+        let myUid = null;
+        let userNickname = "隊員";
+        let markers = {}; 
+
+        // --- 4. 系統初始化與監聽 ---
+        window.onload = function() {
+            if (typeof firebase === 'undefined') {
+                alert("Firebase SDK 未正確載入，請檢查網路。");
+                return;
+            }
+
+            // 匿名登入
+            auth.signInAnonymously().catch(function(error) {
+                console.error("Auth Error", error);
+                alert("無法連線至 Firebase，請檢查 Config 設定。");
+            });
+
+            // 監聽登入狀態
+            auth.onAuthStateChanged(function(user) {
+                if (user) {
+                    myUid = user.uid;
+                    checkIfBanned();
+                    initListeners();
+                    
+                    let name = prompt("請輸入您的暱稱 (將顯示於地圖上)：", "隊員-" + myUid.substring(0,4));
+                    if(name) {
+                        userNickname = name;
+                        playSound('dingdong'); // 成員登入：叮咚
+                        db.ref('users/' + myUid).update({
+                            nickname: userNickname,
+                            lastSeen: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    }
+                }
+            });
+
+            document.getElementById('msgInput').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') sendMsg();
+            });
+
+            document.body.addEventListener('click', function() { if(audioCtx.state === 'suspended') audioCtx.resume(); }, {once:true});
+        };
+
+        function initListeners() {
+            // 監聽成員位置
+            db.ref('users').on('value', (snapshot) => {
+                const users = snapshot.val() || {};
+                Object.keys(users).forEach(uid => {
+                    if (uid === myUid) return; 
+                    const u = users[uid];
+                    if (!u.lat || !u.lng) return;
+
+                    if (markers[uid]) {
+                        markers[uid].setLatLng([u.lat, u.lng]);
+                        markers[uid].getPopup().setContent(`<b>${u.nickname}</b><br>狀態: ${u.status || '未知'}`);
+                        let icon = createAvatarIcon(u.color || "#2196f3", u.nickname || "?");
+                        markers[uid].setIcon(icon);
+                    } else {
+                        let icon = createAvatarIcon(u.color || "#2196f3", u.nickname || "?");
+                        let m = L.marker([u.lat, u.lng], { icon: icon }).addTo(map);
+                        m.bindPopup(`<b>${u.nickname}</b><br>狀態: ${u.status || '正常'}`);
+                        markers[uid] = m;
+                    }
+                });
+                
+                // 移除離線成員標記
+                Object.keys(markers).forEach(uid => {
+                    if (!users[uid] && uid !== 'me') {
+                        map.removeLayer(markers[uid]);
+                        delete markers[uid];
+                    }
+                });
+            });
+
+            // 監聽聊天 (最近50筆)
+            db.ref('chat').limitToLast(50).on('child_added', (snapshot) => {
+                const msg = snapshot.val();
+                renderMessage(msg);
+                // 避免初始化時一次播放太多聲，可加時間判斷，這裡直接播
+                if (Date.now() - msg.timestamp < 10000) {
+                    if (msg.type === "announcement") playSound('dingdong'); // 公告：叮咚
+                    else playSound('msn'); // 聊天：MSN
+                }
+            });
+
+            // 監聽公告
+            db.ref('announcement').on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (val) {
+                    document.getElementById('publicAnnouncement').innerText = "?? " + val.text;
+                }
+            });
+
+            // 監聽封鎖
+            db.ref('banned/' + myUid).on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    alert("您已被管理員移除。");
+                    auth.signOut();
+                    location.reload();
+                }
+            });
+        }
+
+        function checkIfBanned() {
+            db.ref('banned/' + myUid).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    alert("此帳號已被封鎖");
+                    location.reload();
+                }
+            });
+        }
+
+        // --- 5. 互動功能 ---
+        function changeNickname() {
+            let name = prompt("修改暱稱：", userNickname);
+            if(name) {
+                userNickname = name;
+                db.ref('users/' + myUid).update({ nickname: name });
+                alert("暱稱已更新");
+            }
+            toggleMenu();
+        }
+
+        function removeMember() {
+            if(!isAdmin) { alert("權限不足"); toggleMenu(); return; }
+            let targetName = prompt("請輸入要移除的成員暱稱：");
+            if(targetName) {
+                db.ref('users').once('value').then(snapshot => {
+                    let targetUid = null;
+                    snapshot.forEach(child => {
+                        if (child.val().nickname === targetName) targetUid = child.key;
+                    });
+                    if (targetUid) {
+                        if(confirm(`確定移除 [${targetName}] ?`)) {
+                            db.ref('banned/' + targetUid).set(true);
+                            db.ref('users/' + targetUid).remove();
+                            logToAdmin(`已移除成員: ${targetName}`);
+                            alert("已執行移除");
+                        }
+                    } else { alert("找不到該暱稱的成員"); }
+                });
+            }
+            toggleMenu();
+        }
+
+        function toggleChat() {
+            const chatWin = document.getElementById('chatWindow');
+            isChatOpen = !isChatOpen;
+            chatWin.style.display = isChatOpen ? 'flex' : 'none';
+        }
+        function toggleMenu() {
+            const menu = document.getElementById('dropdownList');
+            menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function locateUser() { map.locate({setView: true, maxZoom: 16}); }
+
+        map.on('locationfound', function(e) {
+            db.ref('users/' + myUid).update({
+                lat: e.latlng.lat, lng: e.latlng.lng,
+                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            if (!markers['me']) {
+                markers['me'] = L.marker(e.latlng, { icon: createAvatarIcon("#2196f3", userNickname) }).addTo(map);
+                markers['me'].bindPopup(`<b>${userNickname}</b> (我)`).openPopup();
+            } else {
+                markers['me'].setLatLng(e.latlng);
+            }
+        });
+        map.on('locationerror', function(e) { alert("定位失敗，請確認瀏覽器權限"); });
+
+        function createAvatarIcon(bgColor, name) {
+            let initial = name ? name.charAt(0) : "?";
+            return L.divIcon({
+                className: 'custom-avatar',
+                html: `<div class="user-avatar-icon" style="background-color:${bgColor}; border-color:white;">${initial}</div>`,
+                iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20]
+            });
+        }
+
+        function handleLogin() {
+            const btn = document.getElementById('loginBtn');
+            const menuBtn = document.getElementById('menuBtn');
+            const adminWall = document.getElementById('adminPrivateWall');
+            
+            if (!isAdmin) {
+                let input = prompt("請輸入管理員密碼", "");
+                if (input === "Fire_Fire_54889427") {
+                    isAdmin = true;
+                    playSound('dingdong'); // 管理員登入：叮咚
+                    alert("管理員登入成功");
+                    btn.innerText = "登出"; btn.style.backgroundColor = "#333";
+                    menuBtn.innerHTML = "?? 管理";
+                    toggleMenu();
+                    adminWall.style.display = "block";
+                } else { alert("密碼錯誤"); }
+            } else {
+                isAdmin = false;
+                alert("已登出");
+                btn.innerText = "?? 登入"; btn.style.backgroundColor = "#d32f2f";
+                menuBtn.innerHTML = "?? 選單";
+                document.getElementById('dropdownList').style.display = 'none';
+                adminWall.style.display = "none";
+            }
+        }
+
+        function sendMsg(customText = null, isAnnouncement = false) {
+            const input = document.getElementById('msgInput');
+            let text = customText || input.value;
+            
+            if(text.trim() !== "") {
+                let msgData = {
+                    text: text,
+                    sender: isAnnouncement ? "系統公告" : (isAdmin ? "管理員" : userNickname),
+                    role: isAdmin ? "admin" : "member",
+                    type: isAnnouncement ? "announcement" : "chat",
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                db.ref('chat').push(msgData);
+                if(!customText) input.value = "";
+            }
+        }
+
+        function renderMessage(msg) {
+            const body = document.getElementById('chatBody');
+            const div = document.createElement('div');
+            div.style.marginBottom = "8px";
+            
+            let date = new Date(msg.timestamp);
+            let timeStr = date.getHours() + ":" + String(date.getMinutes()).padStart(2, '0');
+
+            div.dataset.time = timeStr;
+            div.dataset.sender = msg.sender;
+            div.dataset.content = msg.text;
+
+            if (msg.type === "announcement") {
+                div.innerHTML = `<div style="background:#ffeb3b; color:black; padding:5px; border-radius:4px; font-weight:bold; font-size:13px;">?? [公告 ${timeStr}] ${msg.text}</div>`;
+            } else {
+                let color = (msg.role === "admin") ? "#ffeb3b" : "#aaa";
+                let content = msg.text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+                div.innerHTML = `<span style='color:${color}; font-size:12px;'>[${timeStr} ${msg.sender}]</span> <span style="color:white;">${content}</span>`;
+            }
+            body.appendChild(div);
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function insertImage() {
+            let url = prompt("圖片網址:");
+            if(url) sendMsg(`<br><img src="${url}" alt="圖片">`);
+        }
+
+        function setStatus(btn, statusText, colorCode) {
+            document.querySelectorAll('.status-bar .status-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            playSound('bikebell'); // 功能鍵：腳踏車鈴
+
+            db.ref('users/' + myUid).update({
+                status: statusText,
+                color: colorCode
+            });
+            
+            logToAdmin(`${userNickname}: ${statusText}`);
+        }
+
+        function logToAdmin(text) {
+            const wall = document.getElementById('adminPrivateWall');
+            let time = new Date().toLocaleTimeString();
+            wall.innerHTML = `<div>[${time}] ${text}</div>` + wall.innerHTML;
+        }
+
+        function editAnnouncement() {
+            let newMsg = prompt("發布新公告：");
+            if (newMsg) {
+                db.ref('announcement').set({
+                    text: newMsg,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                sendMsg(newMsg, true);
+            }
+            toggleMenu();
+        }
+
+        function exportChatXLS() {
+            let table = `<tr><th>時間</th><th>發言者</th><th>內容</th></tr>`;
+            document.querySelectorAll('#chatBody div').forEach(div => {
+                if(div.dataset.time) {
+                    let clean = div.dataset.content.replace(/<[^>]*>?/gm, '');
+                    table += `<tr><td>${div.dataset.time}</td><td>${div.dataset.sender}</td><td>${clean}</td></tr>`;
+                }
+            });
+            downloadXLS("chat_log.xls", table);
+        }
+        function exportWallLogXLS() {
+            let msg = document.getElementById('publicAnnouncement').innerText;
+            downloadXLS("announcement.xls", `<tr><td>${new Date().toLocaleString()}</td><td>${msg}</td></tr>`);
+        }
+        function downloadXLS(f, t) {
+            let html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table border="1">${t}</table></body></html>`;
+            let blob = new Blob([html], {type: "application/vnd.ms-excel"});
+            let a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = f; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        function loadGPX(input) {
+             if (input.files && input.files[0]) {
+                if(currentGpxLayer) map.removeLayer(currentGpxLayer);
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var blob = new Blob([e.target.result], {type: 'application/xml'});
+                    var url = URL.createObjectURL(blob);
+                    currentGpxLayer = new L.GPX(url, {async: true, marker_options: {
+                        startIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-icon-start.png',
+                        endIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-icon-end.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-shadow.png'
+                    }}).on('loaded', function(e) { map.fitBounds(e.target.getBounds()); }).addTo(map);
+                };
+                reader.readAsText(input.files[0]);
+                toggleMenu();
+            }
+        }
+        function removeGPX() { if(currentGpxLayer) { map.removeLayer(currentGpxLayer); currentGpxLayer = null; alert("已清除"); } toggleMenu(); }
         
-        // 使用 URL.createObjectURL 解決本地路徑問題
-        const url = URL.createObjectURL(file);
-        
-        gpxLayer = new L.GPX(url, {
-            async: true,
-            marker_options: { startIconUrl: null, endIconUrl: null, shadowUrl: null },
-            polyline_options: { color: 'red', opacity: 0.8, weight: 6 }
-        }).on('loaded', function(e) {
-            map.fitBounds(e.target.getBounds());
-        }).on('error', function(e) {
+        function clearChat() { 
+            if(!isAdmin) { alert("權限不足"); return; }
+            if(confirm("清空資料庫聊天紀錄?")) db.ref('chat').remove(); toggleMenu(); 
+        }
+
+        window.addEventListener('resize', function(){ map.invalidateSize(); });
+    </script>
+</body>
+</html>
