@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂單車戰術板 (最終修復版)</title>
+    <title>捷米樂戰術板 v4.6</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -13,14 +13,18 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
     <style>
-        /* --- 基礎設定 --- */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* --- 全域設定 --- */
+        * { 
+            box-sizing: border-box; margin: 0; padding: 0; 
+            font-family: "Microsoft JhengHei", sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            touch-action: manipulation; /* 禁止雙擊縮放 */
+        }
         
         body { 
             overflow: hidden; background-color: #000; 
             width: 100vw; height: 100dvh; 
             display: flex; flex-direction: column;
-            /* 禁止全域選取，防止手機長按干擾 */
             user-select: none; -webkit-user-select: none;
         }
 
@@ -62,7 +66,7 @@
             height: 40px; background: white; color: #333;
         }
 
-        /* 管理選單 (依照需求圖樣排列) */
+        /* 管理選單 */
         .dropdown-menu {
             position: fixed; top: 80px; left: 15px;
             background: white; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.8);
@@ -72,7 +76,7 @@
         .menu-header { background: #333; color: white; padding: 10px; font-weight: bold; text-align: center; }
         .menu-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 15px; display: flex; align-items: center; gap: 10px; color: #333; }
         .menu-item:active { background: #f0f0f0; }
-        .admin-only { display: none !important; } /* 預設隱藏 */
+        .admin-only { display: none !important; } 
 
         /* 聊天室 */
         .chat-window {
@@ -103,7 +107,7 @@
         .st-fixing { background-color: #388e3c; }
         .st-done { background-color: #1976d2; }
 
-        /* PPT 網路無線電 (修正手機觸控問題) */
+        /* PPT */
         .ppt-container { display: flex; flex-direction: column; align-items: center; transform: translateY(-35px); }
         .ppt-btn { 
             width: 90px; height: 90px; 
@@ -111,7 +115,6 @@
             border: 6px solid #fff; border-radius: 50%; color: white; 
             font-weight: bold; display: flex; align-items: center; justify-content: center; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.7); cursor: pointer; font-size: 18px;
-            /* 關鍵：防止手機長按選取 */
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         .ppt-btn:active { background: #d32f2f; transform: scale(0.95); }
@@ -122,7 +125,7 @@
         #msgWall { border-left: 6px solid #fbc02d; display: none; }
         #announcementWall { border-left: 6px solid #007bff; }
 
-        /* 頭像與軌跡 */
+        /* 頭像 */
         .custom-avatar { text-align: center; }
         .user-avatar-icon {
             background-color: #007bff; color: white; border: 2.5px solid white;
@@ -177,7 +180,6 @@
         <div class="menu-item admin-only" onclick="alert('聊天室管理')">4. 聊天室管理 (匯出/刪除)</div>
         <div class="menu-item admin-only" onclick="alert('訊息牆管理')">5. 訊息牆管理 (匯出/刪除)</div>
         <div class="menu-item admin-only" onclick="editAnnouncement()">6. 公告管理 (編輯)</div>
-        
         <div class="menu-header" style="background:#eee; color:#666;">個人設定</div>
         <div class="menu-item" onclick="changeNickname()">修改暱稱</div>
         <div class="menu-item" style="justify-content:center; background:#eee;" onclick="toggleMenu()">▲ 關閉選單</div>
@@ -200,8 +202,9 @@
     <audio id="sndBike" src="https://assets.mixkit.co/active_storage/sfx/1857/1857-preview.mp3"></audio>
 
     <script>
-        // --- 1. 請填入您的 Firebase 設定 ---
-        // 請務必確認這裡的 API Key 是正確的，否則按鈕會卡在「載入中」
+        // ==========================================
+        //  請填入您的 API Key
+        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
             authDomain: "jamielove-map.firebaseapp.com",
@@ -212,17 +215,19 @@
             appId: "1:971633917617:web:95c1b6c57ebc3a530bac90",
         };
 
+        // --- 錯誤攔截器 ---
+        window.onerror = function(msg, url, line) {
+            alert("程式錯誤：\n" + msg + "\n行數：" + line);
+            return false;
+        };
+
         // --- 初始化 Firebase ---
-        try {
-            if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            var db = firebase.database();
-            var auth = firebase.auth();
-            var provider = new firebase.auth.GoogleAuthProvider();
-        } catch (e) {
-            alert("Firebase 初始化失敗，請檢查 API Key");
+        if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
+        var db = firebase.database();
+        var auth = firebase.auth();
+        var provider = new firebase.auth.GoogleAuthProvider();
 
         // --- 全域變數 ---
         var map = L.map('map', { zoomControl: false }).setView([24.1477, 120.6736], 13);
@@ -232,11 +237,11 @@
         let isAdmin = false;
         let userNickname = "訪客";
         let markers = {};
-        let polylines = {}; // 儲存軌跡
+        let polylines = {};
         
         const playSnd = (id) => { try { document.getElementById(id).play(); } catch(e){} };
 
-        // --- 2. 核心權限邏輯 ---
+        // --- 核心權限邏輯 (雙重防線) ---
         auth.onAuthStateChanged((user) => {
             const loginBtn = document.getElementById('loginBtn');
             const msgWall = document.getElementById('msgWall');
@@ -246,64 +251,99 @@
                 userNickname = user.displayName;
                 loginBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> 登出';
 
-                // 讀取管理員權限
-                db.ref('admins/' + myUid).once('value').then(snapshot => {
-                    if (snapshot.exists() && snapshot.val() === true) {
-                        isAdmin = true;
-                        msgWall.style.display = 'block';
-                        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
-                        loginBtn.innerHTML = '<i class="fa-solid fa-user-shield"></i> 管理員';
-                    } else {
-                        isAdmin = false;
-                        msgWall.style.display = 'none';
-                        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-                    }
-                    playSnd('sndDoorbell'); // 登入成功：門鈴聲
-                    initListeners();
-                    
-                    // 更新上線狀態
-                    db.ref('users/' + myUid).update({ 
-                        nickname: userNickname,
-                        lastSeen: firebase.database.ServerValue.TIMESTAMP
-                    });
+                // 成功登入後，先更新一次位置
+                db.ref('users/' + myUid).update({ 
+                    nickname: userNickname,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
                 });
+
+                // 【關鍵修正】：無論資料庫是否有紀錄，一律先詢問密碼
+                db.ref('admins/' + myUid).once('value').then(snapshot => {
+                    let isRegisteredAdmin = (snapshot.exists() && snapshot.val() === true);
+                    
+                    // 延遲一點點執行，確保UI載入完成
+                    setTimeout(() => {
+                        askAdminPassword(isRegisteredAdmin);
+                    }, 500);
+
+                    playSnd('sndDoorbell'); 
+                    initListeners();
+                });
+
             } else {
                 myUid = null;
-                isAdmin = false;
+                disableAdminMode();
                 loginBtn.innerHTML = '<i class="fa-brands fa-google"></i> 登入';
-                msgWall.style.display = 'none';
                 document.getElementById('announcementWall').innerText = "📢 請先登入 Google 帳號";
             }
         });
 
-        // --- 3. 監聽與功能 ---
+        // --- 密碼防線邏輯 ---
+        function askAdminPassword(isRegistered) {
+            // 如果已經註冊過，提示文字不同
+            let promptText = isRegistered 
+                ? "【安全檢查】偵測到您是管理員，請輸入密碼以解鎖權限：" 
+                : "歡迎！若您是管理員請輸入密碼：(若非管理員請按取消)";
+
+            let pass = prompt(promptText);
+            
+            if (pass === "Fire_Fire_54889427") { // 密碼設定處
+                alert("密碼正確！權限已開啟。");
+                activateAdminMode();
+                // 確保寫入資料庫，下次登入依然會認得
+                db.ref('admins/' + myUid).set(true).catch(e => console.log("寫入受限"));
+            } else {
+                if (isRegistered) {
+                    alert("密碼錯誤，將以一般成員身分登入。");
+                }
+                disableAdminMode();
+            }
+        }
+
+        function activateAdminMode() {
+            isAdmin = true;
+            document.getElementById('msgWall').style.display = 'block';
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
+            document.getElementById('loginBtn').innerHTML = '<i class="fa-solid fa-user-shield"></i> 管理員';
+        }
+
+        function disableAdminMode() {
+            isAdmin = false;
+            document.getElementById('msgWall').style.display = 'none';
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+        }
+
+        // --- 登入/登出 ---
         function handleGoogleLogin() {
-            if (!myUid) auth.signInWithPopup(provider).catch(e => alert("登入失敗: " + e.message));
-            else auth.signOut().then(() => location.reload());
+            const btnText = document.getElementById('loginBtn').innerText;
+            // 強制重置功能
+            if (myUid || btnText.includes("載入中")) {
+                if(confirm("確定要登出嗎？")) {
+                    auth.signOut().then(() => location.reload());
+                }
+            } else {
+                auth.signInWithPopup(provider).catch(e => alert("登入失敗: " + e.message));
+            }
         }
 
         function initListeners() {
-            // 公告監聽
+            // 公告
             db.ref('announcements/text').on('value', snap => {
                 if(snap.val()) {
                     document.getElementById('announcementWall').innerText = "📢 " + snap.val();
-                    playSnd('sndDoorbell'); // 公告更新：門鈴聲
+                    playSnd('sndDoorbell');
                 }
             });
-
-            // 聊天監聽
+            // 聊天
             db.ref('chat').limitToLast(1).on('child_added', snap => {
                 const msg = snap.val();
-                if (Date.now() - msg.timestamp < 10000) playSnd('sndMSN'); // 新訊息：MSN聲
+                if (Date.now() - msg.timestamp < 10000) playSnd('sndMSN');
             });
-
-            // 位置與軌跡監聽
+            // 位置
             db.ref('users').on('value', snapshot => {
                 const users = snapshot.val() || {};
                 Object.keys(users).forEach(uid => {
-                    if (users[uid].lat && users[uid].lng) {
-                        updateMarker(uid, users[uid]);
-                    }
+                    if (users[uid].lat && users[uid].lng) updateMarker(uid, users[uid]);
                 });
             });
         }
@@ -315,18 +355,10 @@
                 html: `<div class="status-label">${data.status || '...'}</div>
                        <div class="user-avatar-icon" style="background:${data.color || '#007bff'}">${data.nickname ? data.nickname[0] : '?'}</div>`
             });
-            
-            // 更新標記
-            if (markers[uid]) {
-                markers[uid].setLatLng(latlng).setIcon(icon);
-            } else {
-                markers[uid] = L.marker(latlng, {icon: icon}).addTo(map);
-            }
+            if (markers[uid]) markers[uid].setLatLng(latlng).setIcon(icon);
+            else markers[uid] = L.marker(latlng, {icon: icon}).addTo(map);
 
-            // 更新軌跡 (畫線)
-            if (!polylines[uid]) {
-                polylines[uid] = L.polyline([], {color: data.color || 'blue', weight: 3}).addTo(map);
-            }
+            if (!polylines[uid]) polylines[uid] = L.polyline([], {color: data.color || 'blue', weight: 3}).addTo(map);
             polylines[uid].addLatLng(latlng);
         }
 
@@ -341,7 +373,7 @@
 
         function setStatus(btn, status, color) {
             if(!myUid) return alert("請先登入");
-            playSnd('sndBike'); // 機能鍵：鈴鐺聲
+            playSnd('sndBike');
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             db.ref('users/' + myUid).update({ status: status, color: color });
@@ -355,10 +387,7 @@
         function toggleChat() {
             const win = document.getElementById('chatWindow');
             win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
-            if(win.style.display === 'flex') {
-                loadChat();
-                playSnd('sndMSN'); // 開啟聊天室：MSN聲
-            }
+            if(win.style.display === 'flex') { loadChat(); playSnd('sndMSN'); }
         }
         
         function loadChat() {
@@ -376,13 +405,9 @@
         function sendMsg() {
             const input = document.getElementById('msgInput');
             if(input.value && myUid) {
-                db.ref('chat').push({
-                    text: input.value,
-                    sender: userNickname,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                });
+                db.ref('chat').push({ text: input.value, sender: userNickname, timestamp: firebase.database.ServerValue.TIMESTAMP });
                 input.value = '';
-                playSnd('sndMSN'); // 傳送訊息：MSN聲
+                playSnd('sndMSN');
                 loadChat();
             }
         }
