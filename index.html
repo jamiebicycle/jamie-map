@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂戰術板 v4.6</title>
+    <title>捷米樂戰術板 (地圖修復版)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> 
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -203,7 +205,7 @@
 
     <script>
         // ==========================================
-        //  請填入您的 API Key
+        //  請填入您的 API Key (務必確認正確)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
@@ -229,17 +231,25 @@
         var auth = firebase.auth();
         var provider = new firebase.auth.GoogleAuthProvider();
 
-        // --- 全域變數 ---
-        var map = L.map('map', { zoomControl: false }).setView([24.1477, 120.6736], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-        let myUid = null;
-        let isAdmin = false;
-        let userNickname = "訪客";
-        let markers = {};
-        let polylines = {};
+        // --- 全域變數 (改用 var 以避免作用域問題) ---
+        var map;
+        var myUid = null;
+        var isAdmin = false;
+        var userNickname = "訪客";
+        var markers = {};
+        var polylines = {};
         
         const playSnd = (id) => { try { document.getElementById(id).play(); } catch(e){} };
+
+        // --- 啟動地圖 (確保 Leaflet 已載入) ---
+        window.onload = function() {
+            try {
+                map = L.map('map', { zoomControl: false }).setView([24.1477, 120.6736], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            } catch(e) {
+                alert("地圖載入失敗: " + e.message);
+            }
+        };
 
         // --- 核心權限邏輯 (雙重防線) ---
         auth.onAuthStateChanged((user) => {
@@ -257,11 +267,11 @@
                     lastSeen: firebase.database.ServerValue.TIMESTAMP
                 });
 
-                // 【關鍵修正】：無論資料庫是否有紀錄，一律先詢問密碼
+                // 查詢管理員資格
                 db.ref('admins/' + myUid).once('value').then(snapshot => {
                     let isRegisteredAdmin = (snapshot.exists() && snapshot.val() === true);
                     
-                    // 延遲一點點執行，確保UI載入完成
+                    // 延遲執行，確保 UI 載入
                     setTimeout(() => {
                         askAdminPassword(isRegisteredAdmin);
                     }, 500);
@@ -280,7 +290,6 @@
 
         // --- 密碼防線邏輯 ---
         function askAdminPassword(isRegistered) {
-            // 如果已經註冊過，提示文字不同
             let promptText = isRegistered 
                 ? "【安全檢查】偵測到您是管理員，請輸入密碼以解鎖權限：" 
                 : "歡迎！若您是管理員請輸入密碼：(若非管理員請按取消)";
@@ -290,7 +299,6 @@
             if (pass === "Fire_Fire_54889427") { // 密碼設定處
                 alert("密碼正確！權限已開啟。");
                 activateAdminMode();
-                // 確保寫入資料庫，下次登入依然會認得
                 db.ref('admins/' + myUid).set(true).catch(e => console.log("寫入受限"));
             } else {
                 if (isRegistered) {
@@ -316,7 +324,6 @@
         // --- 登入/登出 ---
         function handleGoogleLogin() {
             const btnText = document.getElementById('loginBtn').innerText;
-            // 強制重置功能
             if (myUid || btnText.includes("載入中")) {
                 if(confirm("確定要登出嗎？")) {
                     auth.signOut().then(() => location.reload());
