@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂戰術板 (v5.0)</title>
+    <title>捷米樂戰術板 (v5.1)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,45 +18,45 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         body { overflow: hidden; background-color: #000; width: 100vw; height: 100dvh; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
 
-        /* --- 上方工具列 (維持原樣) --- */
+        /* --- 上方工具列 --- */
         .top-bar { flex: 0 0 auto; background: #fff; padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: 10px; padding-left: 5px; padding-right: 5px; display: flex; justify-content: space-between; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 3000; }
-        .top-btn { flex: 1; border: 2px solid #333; border-radius: 5px; font-weight: bold; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; height: 45px; background: white; color: #333; }
+        .top-btn { flex: 1; border: 2px solid #333; border-radius: 5px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; height: 40px; background: white; color: #333; }
 
         /* --- 地圖區域 --- */
         #map-container { flex: 1; position: relative; width: 100%; overflow: hidden; }
         #map { width: 100%; height: 100%; z-index: 0; background: #222; }
         .gps-float-btn { position: absolute; top: 80px; right: 15px; width: 44px; height: 44px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); z-index: 1000; font-size: 22px; color: #1a73e8; border: 2px solid #fff; }
 
-        /* --- 底部控制區 (樣式還原) --- */
+        /* --- 底部控制區 --- */
         .bottom-area { flex: 0 0 auto; padding: 5px; padding-bottom: max(20px, env(safe-area-inset-bottom)); background: #000; z-index: 3000; border-top: 1px solid #333; color: white; }
 
-        /* 訊息牆 & 公告 */
+        /* 訊息牆 */
         .wall-item { background: #000; color: #fff; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; font-size: 14px; border-left: 4px solid #007bff; display: flex; align-items: center; gap: 8px; }
-        /* 管理員牆：預設隱藏，重要樣式 */
         #msgWall { border-left-color: #fbc02d; display: none; margin-bottom: 5px; background: #222; border: 1px solid #fbc02d; color: #fbc02d; font-weight: bold; }
 
-        /* --- 狀態按鈕列 (還原為長方形填滿) --- */
-        .status-bar { display: flex; align-items: stretch; justify-content: space-between; position: relative; gap: 2px; height: 60px; margin-top: 5px; }
+        /* --- 狀態按鈕列 (修正：使用 flex:1 確保是長按鈕) --- */
+        .status-bar { display: flex; align-items: flex-end; justify-content: space-between; position: relative; margin-top: 5px; width: 100%; gap: 3px; }
         
-        /* 左右兩側的按鈕群組 */
-        .btn-group-left, .btn-group-right { flex: 1; display: flex; gap: 2px; }
+        /* 左右按鈕群組，確保按鈕拉長 */
+        .btn-group { flex: 1; display: flex; gap: 3px; }
         
         .status-btn { 
-            flex: 1; /* 關鍵：讓按鈕填滿空間 */
-            border: none; border-radius: 4px; color: white; font-weight: bold; font-size: 16px; 
-            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
+            flex: 1; /* 關鍵：讓按鈕自動填滿，變成長按鈕 */
+            height: 50px; border: none; border-radius: 5px; 
+            color: white; font-weight: bold; font-size: 15px; cursor: pointer; 
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4); 
             display: flex; align-items: center; justify-content: center;
         }
-        .status-btn:active { opacity: 0.8; }
+        .status-btn:active { opacity: 0.8; transform: scale(0.98); }
         
         .st-going { background-color: #d32f2f; } 
         .st-arrived { background-color: #fbc02d; color: black; }
         .st-fixing { background-color: #388e3c; } 
         .st-done { background-color: #1976d2; }
 
-        /* --- PPT 按鈕 (置中圓形) --- */
-        .ppt-wrapper { width: 80px; display: flex; justify-content: center; align-items: center; position: relative; z-index: 3100; margin: 0 5px; }
-        .ppt-container { display: flex; flex-direction: column; align-items: center; transform: translateY(-20px); }
+        /* PPT 按鈕 (維持圓形置中) */
+        .ppt-wrapper { width: 80px; display: flex; justify-content: center; align-items: center; position: relative; z-index: 3100; flex-shrink: 0; }
+        .ppt-container { display: flex; flex-direction: column; align-items: center; transform: translateY(-15px); }
         .ppt-btn { 
             width: 80px; height: 80px; background: radial-gradient(circle, #4a90e2 0%, #1e4a7a 100%); 
             border: 5px solid #fff; border-radius: 50%; color: white; font-weight: bold; 
@@ -64,16 +64,13 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.7); cursor: pointer; font-size: 18px; 
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
-        .ppt-btn.talking { 
-            background: radial-gradient(circle, #ff5252 0%, #b71c1c 100%); 
-            box-shadow: 0 0 25px #ff5252; border-color: #ffcccc; 
-        }
+        .ppt-btn.talking { background: radial-gradient(circle, #ff5252 0%, #b71c1c 100%); box-shadow: 0 0 25px #ff5252; border-color: #ffcccc; }
         .ppt-label { color: #fff; font-size: 11px; margin-top: 5px; font-weight: bold; }
 
-        /* --- 管理選單 (還原圖3樣式) --- */
+        /* --- 管理選單 (修正：完全依照圖3內容) --- */
         .dropdown-menu { position: fixed; top: 60px; left: 10px; background: #3b78c4; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.9); display: none; flex-direction: column; width: 260px; max-height: 80vh; overflow-y: auto; z-index: 5000; border: 2px solid white; }
         .menu-header { background: #1e4a7a; color: white; padding: 12px; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); }
-        .menu-item { padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.2); color: white; font-size: 15px; cursor: pointer; display: flex; align-items: center; font-weight: bold;}
+        .menu-item { padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.2); color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; font-weight: bold; }
         .menu-item:active { background: rgba(0,0,0,0.2); }
         .admin-only { display: none !important; }
 
@@ -116,7 +113,7 @@
         </div>
         
         <div class="status-bar">
-            <div class="btn-group-left">
+            <div class="btn-group">
                 <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
                 <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
             </div>
@@ -128,7 +125,7 @@
                 </div>
             </div>
             
-            <div class="btn-group-right">
+            <div class="btn-group">
                 <button class="status-btn st-fixing" onclick="setStatus(this, '維修中', '#388e3c')">維修中</button>
                 <button class="status-btn st-done" onclick="setStatus(this, '已完成', '#1976d2')">已完成</button>
             </div>
@@ -137,13 +134,13 @@
 
     <div id="dropdownList" class="dropdown-menu">
         <div class="menu-header">管理員下拉選單</div>
-        <div class="menu-item admin-only" onclick="adminAction('edit_admin')">1. 編輯管理員 (新增/刪除)</div>
-        <div class="menu-item admin-only" onclick="adminAction('edit_member')">2. 編輯成員 (新增/修改/刪除)</div>
-        <div class="menu-item admin-only" onclick="adminAction('map_mgr')">3. 地圖管理 (GPX匯入/刪除)</div>
-        <div class="menu-item admin-only" onclick="adminAction('chat_mgr')">4. 聊天室管理 (匯出/刪除)</div>
-        <div class="menu-item admin-only" onclick="adminAction('msg_mgr')">5. 訊息牆管理 (匯出/刪除)</div>
+        <div class="menu-item admin-only" onclick="adminAction('edit_admin')">1. 編輯管理員(新增/刪除)</div>
+        <div class="menu-item admin-only" onclick="adminAction('edit_member')">2. 編輯成員(新增/修改/刪除)</div>
+        <div class="menu-item admin-only" onclick="adminAction('map_mgr')">3. 地圖管理(GPX匯入/刪除)</div>
+        <div class="menu-item admin-only" onclick="adminAction('chat_mgr')">4. 聊天室管理(匯出/刪除)</div>
+        <div class="menu-item admin-only" onclick="adminAction('msg_mgr')">5. 訊息牆管理(匯出/刪除)</div>
         
-        <div class="menu-item admin-only" onclick="editAnnouncement()" style="border-top: 2px solid rgba(255,255,255,0.5);">6. 發布公告</div>
+        <div class="menu-item admin-only" onclick="editAnnouncement()" style="border-top: 1px solid rgba(255,255,255,0.3);">6. 發布公告</div>
         <div class="menu-item" onclick="changeNickname()">7. 個人設定 (修改暱稱)</div>
         <div class="menu-item" style="justify-content:center; background:#1e4a7a;" onclick="toggleMenu()">▲ 關閉選單</div>
     </div>
@@ -219,7 +216,7 @@
                     userNickname = user.displayName;
                     loginBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> 登出';
                     
-                    // 登入音效: 門鈴聲
+                    // 登入音效: 門鈴聲 (2568)
                     playSnd('sndDoorbell');
 
                     db.ref('users/' + myUid).update({ 
@@ -246,7 +243,7 @@
         }
 
         function askAdminPassword(isRegistered) {
-            let msg = isRegistered ? "偵測到管理員帳號，請輸入密碼：" : "歡迎！管理員請輸入密碼 (一般成員按取消)：";
+            let msg = isRegistered ? "偵測到管理員帳號，請輸入密碼：" : "歡迎！若為管理員請輸入密碼 (一般成員按取消)：";
             let pass = prompt(msg);
             
             if (pass === "Fire_Fire_54889427") { 
@@ -261,7 +258,7 @@
 
         function activateAdminMode() {
             isAdmin = true;
-            document.getElementById('msgWall').style.display = 'block'; // 修正：強制顯示
+            document.getElementById('msgWall').style.display = 'block'; // 強制顯示訊息牆
             document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
             document.getElementById('loginBtn').innerHTML = '<i class="fa-solid fa-user-shield"></i> 管理員';
         }
@@ -278,7 +275,7 @@
             db.ref('announcements/text').on('value', snap => {
                 if(snap.val()) {
                     document.getElementById('announcementWall').innerHTML = `<i class="fa-solid fa-bullhorn"></i> ${snap.val()}`;
-                    playSnd('sndDoorbell'); // 公告音效: 門鈴聲
+                    playSnd('sndDoorbell'); // 公告音效: 門鈴聲 (2568)
                 }
             });
 
@@ -289,7 +286,7 @@
                 chatBody.innerHTML += `<div style="margin-bottom:5px;"><strong>${msg.sender}:</strong> ${msg.text}</div>`;
                 chatBody.scrollTop = chatBody.scrollHeight;
                 
-                if (Date.now() - msg.timestamp < 10000) playSnd('sndMSN'); // 聊天音效: MSN
+                if (Date.now() - msg.timestamp < 10000) playSnd('sndMSN'); // 聊天音效: MSN (2346)
             });
 
             // 成員位置
@@ -328,7 +325,7 @@
         // --- 4. 狀態按鈕與 PPT (信號模式) ---
         function setStatus(btn, status, color) {
             if(!myUid) return alert("請先登入");
-            playSnd('sndBike'); // 機能鍵音效: 鈴鐺聲
+            playSnd('sndBike'); // 機能鍵音效: 鈴鐺聲 (1857)
             db.ref('users/' + myUid).update({ status: status, color: color });
         }
 
@@ -338,7 +335,7 @@
             const start = (e) => { 
                 e.preventDefault(); 
                 btn.classList.add('talking'); btn.innerText = "發信中"; 
-                playSnd('sndPtt'); 
+                playSnd('sndPtt'); // PPT音效: 嗶聲 (2569)
             };
             // 放開 (模擬無線電結束)
             const end = (e) => { 
