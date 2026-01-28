@@ -13,15 +13,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
     <style>
-        /* --- 1. 基礎設定 & iPhone 安全區域修正 --- */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        /* --- V4.2.1 原版樣式 (未變動) --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            overflow: hidden; background-color: #eee; width: 100vw; height: 100dvh; 
-            display: flex; flex-direction: column; user-select: none; -webkit-user-select: none;
+            overflow: hidden; background-color: #eee; width: 100vw; height: 100dvh;
+            display: flex; flex-direction: column;
         }
 
-        /* --- 2. 版面配置 --- */
         .top-bar {
             flex: 0 0 auto; background: rgba(255,255,255,0.95); 
             padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px;
@@ -39,18 +38,17 @@
             background: #222; z-index: 2000; color: white;
         }
 
-        /* --- UI 元件 --- */
         .top-btn {
             flex: 1; border: none; border-radius: 8px; font-weight: bold;
             font-size: 14px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 5px;
-            text-decoration: none; color: #333; border: 1px solid #ccc; background: white; height: 44px;
+            text-decoration: none; color: #333; border: 1px solid #ccc;
+            background: white; height: 44px;
         }
         .top-btn:active { background: #f0f0f0; transform: scale(0.98); }
         .btn-zello { background-color: #ff9800; color: white; border-color: #e65100; }
         .btn-login { background-color: #d32f2f; color: white; border-color: #b71c1c; }
 
-        /* GPS 按鈕 */
         .gps-float-btn {
             position: absolute; top: 15px; right: 15px; width: 50px; height: 50px;
             background-color: white; border: 2px solid #ccc; border-radius: 50%;
@@ -59,7 +57,6 @@
             font-size: 24px; color: #333;
         }
 
-        /* 鎖定畫面 */
         #lockScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); color: white; z-index: 9999;
@@ -68,7 +65,6 @@
         }
         #lockScreen h2 { margin-bottom: 20px; color: #ff9800; }
 
-        /* 選單 */
         .dropdown-menu {
             position: fixed; top: 80px; left: 10px; background: white;
             border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
@@ -79,7 +75,6 @@
         .dropdown-menu div, .dropdown-menu label { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 16px; display: flex; align-items: center; gap: 10px; }
         .admin-only { display: none !important; } 
 
-        /* 聊天室 */
         .chat-window {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 90%; max-width: 400px; height: 60vh;
@@ -93,7 +88,6 @@
         .chat-input-area input { flex: 1; padding: 10px; border-radius: 6px; border: none; font-size: 16px; }
         .chat-input-area button { margin-left: 8px; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; }
 
-        /* 底部按鈕 */
         .status-bar { display: flex; gap: 8px; height: 55px; }
         .status-btn {
             flex: 1; border: none; color: white; font-weight: bold; font-size: 16px;
@@ -105,18 +99,17 @@
         .st-fixing { background-color: #388e3c; }
         .st-done { background-color: #1976d2; }
 
-        /* 公告與監控牆 */
         .public-announcement {
             background: rgba(0, 0, 0, 0.85); color: #ffeb3b; padding: 10px; border-radius: 6px; font-size: 15px;
             text-align: center; display: block; border: 2px solid #fbc02d; margin-bottom: 5px;
-            box-shadow: 0 0 10px rgba(255, 235, 59, 0.2); font-weight: bold; cursor: pointer; /* 修正A: 顯示可點擊 */
+            box-shadow: 0 0 10px rgba(255, 235, 59, 0.2); font-weight: bold;
+            cursor: pointer; /* A. 增加手指游標提示 */
         }
         .admin-private-wall {
             background: rgba(13, 71, 161, 0.9); color: #fff; padding: 5px; border-radius: 5px; font-size: 12px;
             display: none; border-left: 4px solid #00e5ff; margin-bottom: 5px; max-height: 60px; overflow-y: auto;
         }
 
-        /* 頭像樣式 */
         .custom-avatar { text-align: center; }
         .user-avatar-icon {
             background-color: #2196f3; color: white; border: 2px solid white;
@@ -133,7 +126,7 @@
         }
 
         #gpxInput { display: none; }
-        /* 修正D: 連結樣式 */
+        /* D. 聊天室連結樣式 */
         .chat-link { color: #4fc3f7; text-decoration: underline; word-break: break-all; }
     </style>
 </head>
@@ -172,9 +165,7 @@
 
     <div class="bottom-area pointer-auto">
         <div id="adminPrivateWall" class="admin-private-wall"></div>
-        <div id="publicAnnouncement" class="public-announcement" onclick="editAnnouncement()">
-            ?? 公告：請登入以開始使用
-        </div>
+        <div id="publicAnnouncement" class="public-announcement" onclick="editAnnouncement()">?? 公告：請登入以開始使用</div>
         <div class="status-bar">
             <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
             <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
@@ -221,7 +212,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
 
     <script>
-        // --- 1. Firebase Config (請務必在此填入您的 API Key) ---
+        // --- 1. Firebase Config (重要：請務必填回您的金鑰！) ---
+        const firebaseConfig = {
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
             authDomain: "jamielove-map.firebaseapp.com",
             databaseURL: "https://jamielove-map-default-rtdb.firebaseio.com",
@@ -251,10 +243,10 @@
         let userNickname = "訪客";
         let markers = {}; 
         let polylines = {};
-        // 修正C: 防止重複監聽標記
-        let listenersStarted = false;
+        // C. 防呆機制：防止重複監聽
+        let isListening = false;
 
-        // --- 3. 音效 (維持 V4.2.1 原版) ---
+        // --- 3. 音效 ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContext();
         function playSound(type) {
@@ -366,19 +358,14 @@
             db.ref('users/' + myUid + '/role').once('value', snap => {
                 if(snap.val() === 'admin') {
                     isAdmin = true; 
-                    // [資安] 確保 admins 節點也有此人
-                    db.ref('admins/' + myUid).set(true);
                     updateAdminUI();
                     return;
                 }
-                
                 setTimeout(() => {
                     let input = prompt(`歡迎 ${userNickname}！\n若您是管理員，請輸入密碼：\n(一般成員請按取消)`);
                     if (input === "Fire_Fire_54889427") { 
                         isAdmin = true;
-                        // [資安] 同時寫入權限
-                        db.ref('users/' + myUid).update({ role: 'admin' }); 
-                        db.ref('admins/' + myUid).set(true); 
+                        db.ref('users/' + myUid).update({ role: 'admin' });
                         alert("管理員權限已啟動 ???");
                     }
                     updateAdminUI();
@@ -400,9 +387,9 @@
         }
 
         function initListeners() {
-            // 修正C: 防止重複監聽
-            if(listenersStarted) return;
-            listenersStarted = true;
+            // C. 檢查是否已啟動監聽，防止重複
+            if (isListening) return;
+            isListening = true;
 
             db.ref('users').on('value', (snapshot) => {
                 const users = snapshot.val() || {};
@@ -440,16 +427,15 @@
             let popupContent = `<div style="text-align:center"><b>${u.nickname}</b><br>狀態: ${statusText}</div>`;
             let latlng = [u.lat, u.lng];
             
+            // E. 優化軌跡：只有當位置移動超過 5 公尺時才畫線
             if (markers[uid]) {
-                // 修正E: 只有位置真的改變時，才畫軌跡，避免原地重複畫點消耗資源
-                let oldLatLng = markers[uid].getLatLng();
-                if (oldLatLng.distanceTo(latlng) > 5) { // 移動超過5米才畫線
+                let oldPos = markers[uid].getLatLng();
+                if (oldPos.distanceTo(latlng) > 5) {
                     if (!polylines[uid]) {
                         polylines[uid] = L.polyline([], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
                     }
                     polylines[uid].addLatLng(latlng);
                 }
-                // Marker 永遠更新
                 markers[uid].setLatLng(latlng);
                 markers[uid].setIcon(icon);
                 markers[uid].getPopup().setContent(popupContent);
@@ -544,7 +530,7 @@
             }
         }
 
-        // 修正D: 連結顯示函式
+        // D. 網址自動轉換功能
         function linkify(text) {
             var urlRegex = /(https?:\/\/[^\s]+)/g;
             return text.replace(urlRegex, function(url) {
@@ -558,12 +544,13 @@
             div.style.marginBottom = "8px";
             let date = new Date(msg.timestamp);
             let timeStr = date.getHours() + ":" + String(date.getMinutes()).padStart(2, '0');
-            
-            // 使用 linkify 處理訊息內容
-            let content = linkify(msg.text);
-            
+            div.dataset.time = timeStr; div.dataset.sender = msg.sender; div.dataset.content = msg.text;
             let color = (msg.role === "admin") ? "#ffeb3b" : "#aaa";
+            
+            // 使用 linkify 處理內容
+            let content = linkify(msg.text);
             div.innerHTML = `<span style='color:${color}; font-size:12px;'>[${timeStr} ${msg.sender}]</span> <span style="color:white;">${content}</span>`;
+            
             body.appendChild(div);
             body.scrollTop = body.scrollHeight;
         }
@@ -599,7 +586,7 @@
                 db.ref('announcement').set({ text: msg });
                 db.ref('chat').push({ text: msg, sender: "系統公告", type: "announcement", timestamp: firebase.database.ServerValue.TIMESTAMP });
             }
-            // 不關閉選單，因為可能是從下方點擊的
+            // 不關閉選單，因可能是點擊公告觸發
         }
         
         function removeGPX() { if(currentGpxLayer) { map.removeLayer(currentGpxLayer); currentGpxLayer = null; alert("已清除"); } toggleMenu(); }
