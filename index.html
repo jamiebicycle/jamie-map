@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂戰術板 v4.9</title>
+    <title>捷米樂戰術板 (v5.0)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,55 +14,78 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
     <style>
-        /* --- 全域設定 (保留不動) --- */
+        /* --- 全域設定 --- */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         body { overflow: hidden; background-color: #000; width: 100vw; height: 100dvh; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
 
-        /* --- 上方工具列 --- */
-        .top-bar { flex: 0 0 auto; background: #fff; padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: 10px; padding-left: 10px; padding-right: 10px; display: flex; justify-content: space-between; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 3000; }
-        .top-btn { flex: 1; border: 2px solid #333; border-radius: 5px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; height: 40px; background: white; color: #333; }
+        /* --- 上方工具列 (維持原樣) --- */
+        .top-bar { flex: 0 0 auto; background: #fff; padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: 10px; padding-left: 5px; padding-right: 5px; display: flex; justify-content: space-between; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 3000; }
+        .top-btn { flex: 1; border: 2px solid #333; border-radius: 5px; font-weight: bold; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; height: 45px; background: white; color: #333; }
 
         /* --- 地圖區域 --- */
         #map-container { flex: 1; position: relative; width: 100%; overflow: hidden; }
         #map { width: 100%; height: 100%; z-index: 0; background: #222; }
         .gps-float-btn { position: absolute; top: 80px; right: 15px; width: 44px; height: 44px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); z-index: 1000; font-size: 22px; color: #1a73e8; border: 2px solid #fff; }
 
-        /* --- 底部控制區 --- */
-        .bottom-area { flex: 0 0 auto; padding: 10px; padding-bottom: max(20px, env(safe-area-inset-bottom)); background: #000; z-index: 3000; border-top: 1px solid #333; color: white; }
+        /* --- 底部控制區 (樣式還原) --- */
+        .bottom-area { flex: 0 0 auto; padding: 5px; padding-bottom: max(20px, env(safe-area-inset-bottom)); background: #000; z-index: 3000; border-top: 1px solid #333; color: white; }
 
-        /* 管理選單 (修正：完全依照圖3內容) */
-        .dropdown-menu { position: fixed; top: 70px; left: 10px; background: #4a90e2; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.8); display: none; flex-direction: column; width: 260px; overflow: hidden; max-height: 70vh; overflow-y: auto; z-index: 4000; border: 2px solid white; }
-        .menu-header { background: #1e4a7a; color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 16px; border-bottom: 1px solid white;}
-        .menu-item { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.3); cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 10px; color: white; font-weight: bold; }
-        .menu-item:active { background: rgba(255,255,255,0.2); }
-        .admin-only { display: none !important; } 
+        /* 訊息牆 & 公告 */
+        .wall-item { background: #000; color: #fff; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; font-size: 14px; border-left: 4px solid #007bff; display: flex; align-items: center; gap: 8px; }
+        /* 管理員牆：預設隱藏，重要樣式 */
+        #msgWall { border-left-color: #fbc02d; display: none; margin-bottom: 5px; background: #222; border: 1px solid #fbc02d; color: #fbc02d; font-weight: bold; }
 
-        /* 聊天室 */
-        .chat-window { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 400px; height: 50vh; background: rgba(0, 0, 0, 0.9); border: 2px solid #007bff; border-radius: 12px; color: white; display: none; flex-direction: column; z-index: 5000; box-shadow: 0 20px 50px rgba(0,0,0,0.9); }
+        /* --- 狀態按鈕列 (還原為長方形填滿) --- */
+        .status-bar { display: flex; align-items: stretch; justify-content: space-between; position: relative; gap: 2px; height: 60px; margin-top: 5px; }
+        
+        /* 左右兩側的按鈕群組 */
+        .btn-group-left, .btn-group-right { flex: 1; display: flex; gap: 2px; }
+        
+        .status-btn { 
+            flex: 1; /* 關鍵：讓按鈕填滿空間 */
+            border: none; border-radius: 4px; color: white; font-weight: bold; font-size: 16px; 
+            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .status-btn:active { opacity: 0.8; }
+        
+        .st-going { background-color: #d32f2f; } 
+        .st-arrived { background-color: #fbc02d; color: black; }
+        .st-fixing { background-color: #388e3c; } 
+        .st-done { background-color: #1976d2; }
+
+        /* --- PPT 按鈕 (置中圓形) --- */
+        .ppt-wrapper { width: 80px; display: flex; justify-content: center; align-items: center; position: relative; z-index: 3100; margin: 0 5px; }
+        .ppt-container { display: flex; flex-direction: column; align-items: center; transform: translateY(-20px); }
+        .ppt-btn { 
+            width: 80px; height: 80px; background: radial-gradient(circle, #4a90e2 0%, #1e4a7a 100%); 
+            border: 5px solid #fff; border-radius: 50%; color: white; font-weight: bold; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.7); cursor: pointer; font-size: 18px; 
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+        }
+        .ppt-btn.talking { 
+            background: radial-gradient(circle, #ff5252 0%, #b71c1c 100%); 
+            box-shadow: 0 0 25px #ff5252; border-color: #ffcccc; 
+        }
+        .ppt-label { color: #fff; font-size: 11px; margin-top: 5px; font-weight: bold; }
+
+        /* --- 管理選單 (還原圖3樣式) --- */
+        .dropdown-menu { position: fixed; top: 60px; left: 10px; background: #3b78c4; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.9); display: none; flex-direction: column; width: 260px; max-height: 80vh; overflow-y: auto; z-index: 5000; border: 2px solid white; }
+        .menu-header { background: #1e4a7a; color: white; padding: 12px; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); }
+        .menu-item { padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.2); color: white; font-size: 15px; cursor: pointer; display: flex; align-items: center; font-weight: bold;}
+        .menu-item:active { background: rgba(0,0,0,0.2); }
+        .admin-only { display: none !important; }
+
+        /* --- 聊天室 --- */
+        .chat-window { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 400px; height: 50vh; background: rgba(0, 0, 0, 0.95); border: 2px solid #007bff; border-radius: 12px; color: white; display: none; flex-direction: column; z-index: 5000; box-shadow: 0 20px 50px rgba(0,0,0,0.9); }
         .chat-header { background: #007bff; padding: 10px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
         .chat-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 14px; }
         .chat-input-area { display: flex; padding: 10px; background: #222; gap: 8px; }
-        .chat-input-area input { flex: 1; padding: 8px; border-radius: 5px; border: none; font-size: 16px; }
-        .chat-input-area button { border: none; padding: 0 15px; border-radius: 5px; background: #28a745; color: white; font-weight: bold; }
+        .chat-input-area input { flex: 1; padding: 10px; border-radius: 5px; border: none; font-size: 16px; }
+        .chat-input-area button { border: none; padding: 0 20px; border-radius: 5px; background: #28a745; color: white; font-weight: bold; }
 
-        /* 狀態按鈕 */
-        .status-bar { display: flex; align-items: flex-start; justify-content: space-between; position: relative; margin-top: 5px; gap: 5px; }
-        .status-btn { width: 70px; height: 50px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .status-btn:active { transform: scale(0.95); }
-        .st-going { background-color: #d32f2f; } .st-arrived { background-color: #fbc02d; color: black; }
-        .st-fixing { background-color: #388e3c; } .st-done { background-color: #1976d2; }
-
-        /* PPT 網路無線電 */
-        .ppt-container { display: flex; flex-direction: column; align-items: center; transform: translateY(-30px); }
-        .ppt-btn { width: 90px; height: 90px; background: radial-gradient(circle, #4a90e2 0%, #1e4a7a 100%); border: 5px solid #fff; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.7); cursor: pointer; font-size: 18px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-        .ppt-btn.talking { background: radial-gradient(circle, #ff5252 0%, #b71c1c 100%); box-shadow: 0 0 25px #ff5252; border-color: #ffcccc; }
-        .ppt-label { color: #fff; font-size: 12px; margin-top: 5px; font-weight: bold; }
-
-        /* 訊息牆 */
-        .wall-item { background: #000; color: #fff; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; font-size: 13px; border-left: 4px solid #007bff; }
-        #msgWall { border-left-color: #fbc02d; display: none; margin-bottom: 10px; background: #222; border: 1px solid #fbc02d; color: #fbc02d; font-weight: bold; }
-        
-        /* 頭像與標籤 */
+        /* 頭像 */
         .custom-avatar { text-align: center; }
         .user-avatar-icon { background-color: #007bff; color: white; border: 2px solid white; border-radius: 50%; text-align: center; line-height: 36px; font-weight: bold; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); width: 40px !important; height: 40px !important; margin: 0 auto; }
         .status-label { background: white; border: 1px solid #ccc; border-radius: 4px; padding: 2px 6px; font-size: 12px; color: #333; font-weight: bold; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
@@ -93,14 +116,22 @@
         </div>
         
         <div class="status-bar">
-            <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
-            <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
-            <div class="ppt-container">
-                <div class="ppt-btn" id="pptBtn">PPT</div>
-                <div class="ppt-label">網路無線電</div>
+            <div class="btn-group-left">
+                <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
+                <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
             </div>
-            <button class="status-btn st-fixing" onclick="setStatus(this, '維修中', '#388e3c')">維修中</button>
-            <button class="status-btn st-done" onclick="setStatus(this, '已完成', '#1976d2')">已完成</button>
+            
+            <div class="ppt-wrapper">
+                <div class="ppt-container">
+                    <div class="ppt-btn" id="pptBtn">PPT</div>
+                    <div class="ppt-label">網路無線電</div>
+                </div>
+            </div>
+            
+            <div class="btn-group-right">
+                <button class="status-btn st-fixing" onclick="setStatus(this, '維修中', '#388e3c')">維修中</button>
+                <button class="status-btn st-done" onclick="setStatus(this, '已完成', '#1976d2')">已完成</button>
+            </div>
         </div>
     </div>
 
@@ -112,8 +143,7 @@
         <div class="menu-item admin-only" onclick="adminAction('chat_mgr')">4. 聊天室管理 (匯出/刪除)</div>
         <div class="menu-item admin-only" onclick="adminAction('msg_mgr')">5. 訊息牆管理 (匯出/刪除)</div>
         
-        <div class="menu-header" style="background:#2c5d9e; font-size:12px;">一般設定</div>
-        <div class="menu-item admin-only" onclick="editAnnouncement()">6. 公告發布</div>
+        <div class="menu-item admin-only" onclick="editAnnouncement()" style="border-top: 2px solid rgba(255,255,255,0.5);">6. 發布公告</div>
         <div class="menu-item" onclick="changeNickname()">7. 個人設定 (修改暱稱)</div>
         <div class="menu-item" style="justify-content:center; background:#1e4a7a;" onclick="toggleMenu()">▲ 關閉選單</div>
     </div>
@@ -157,9 +187,6 @@
         var markers = {};
         var polylines = {};
         var db, auth, provider;
-        // 錄音相關
-        var mediaRecorder;
-        var audioChunks = [];
 
         // --- 1. 系統初始化 ---
         window.onload = function() {
@@ -171,17 +198,15 @@
                     provider = new firebase.auth.GoogleAuthProvider();
                 }
                 
-                // 地圖初始化
                 map = L.map('map', { zoomControl: false }).setView([24.1477, 120.6736], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
                 
-                // 綁定按鈕
                 setupPPT();
                 startAuthListener();
 
             } catch(e) {
-                console.error("Init Error:", e);
-                alert("系統初始化失敗，請檢查網路或 API Key");
+                console.error(e);
+                alert("系統初始化失敗，請檢查網路");
             }
         };
 
@@ -194,10 +219,9 @@
                     userNickname = user.displayName;
                     loginBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> 登出';
                     
-                    // 登入音效 (門鈴聲)
+                    // 登入音效: 門鈴聲
                     playSnd('sndDoorbell');
 
-                    // 更新資料
                     db.ref('users/' + myUid).update({ 
                         nickname: userNickname, 
                         lastSeen: firebase.database.ServerValue.TIMESTAMP 
@@ -217,15 +241,15 @@
             db.ref('admins/' + myUid).once('value').then(snapshot => {
                 let isRegistered = (snapshot.exists() && snapshot.val() === true);
                 setTimeout(() => askAdminPassword(isRegistered), 500);
-                initDataListeners(); // 啟動資料接收
+                initDataListeners();
             });
         }
 
         function askAdminPassword(isRegistered) {
-            let msg = isRegistered ? "偵測到管理員帳號，請輸入密碼：" : "歡迎！若為管理員請輸入密碼 (一般成員按取消)：";
+            let msg = isRegistered ? "偵測到管理員帳號，請輸入密碼：" : "歡迎！管理員請輸入密碼 (一般成員按取消)：";
             let pass = prompt(msg);
             
-            if (pass === "Fire_Fire_54889427") { // 密碼
+            if (pass === "Fire_Fire_54889427") { 
                 alert("密碼正確，管理員模式已啟動");
                 activateAdminMode();
                 db.ref('admins/' + myUid).set(true);
@@ -237,7 +261,7 @@
 
         function activateAdminMode() {
             isAdmin = true;
-            document.getElementById('msgWall').style.display = 'block'; // 修正：管理員訊息牆顯示
+            document.getElementById('msgWall').style.display = 'block'; // 修正：強制顯示
             document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
             document.getElementById('loginBtn').innerHTML = '<i class="fa-solid fa-user-shield"></i> 管理員';
         }
@@ -248,45 +272,32 @@
             document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
         }
 
-        // --- 3. 資料監聽 (修正：聊天即時更新) ---
+        // --- 3. 資料監聽 ---
         function initDataListeners() {
             // 公告
             db.ref('announcements/text').on('value', snap => {
                 if(snap.val()) {
                     document.getElementById('announcementWall').innerHTML = `<i class="fa-solid fa-bullhorn"></i> ${snap.val()}`;
-                    playSnd('sndDoorbell'); // 公告音效 (門鈴聲)
+                    playSnd('sndDoorbell'); // 公告音效: 門鈴聲
                 }
             });
 
-            // 聊天 (修正：即時顯示 + 歷史紀錄 + 提示音)
-            // 使用 child_added 確保即時性
+            // 聊天 (修正：MSN音效 + 捲動)
             db.ref('chat').limitToLast(50).on('child_added', snap => {
                 const msg = snap.val();
                 const chatBody = document.getElementById('chatBody');
                 chatBody.innerHTML += `<div style="margin-bottom:5px;"><strong>${msg.sender}:</strong> ${msg.text}</div>`;
                 chatBody.scrollTop = chatBody.scrollHeight;
                 
-                // 只對新訊息播放音效
-                if (Date.now() - msg.timestamp < 10000) playSnd('sndMSN'); // 聊天音效 (MSN聲)
+                if (Date.now() - msg.timestamp < 10000) playSnd('sndMSN'); // 聊天音效: MSN
             });
 
-            // 成員位置 (修正：軌跡顯示)
+            // 成員位置
             db.ref('users').on('value', snapshot => {
                 const users = snapshot.val() || {};
                 Object.keys(users).forEach(uid => {
-                    if (users[uid].lat && users[uid].lng) {
-                        updateMarker(uid, users[uid]);
-                    }
+                    if (users[uid].lat && users[uid].lng) updateMarker(uid, users[uid]);
                 });
-            });
-
-            // 無線電語音監聽
-            db.ref('voice').limitToLast(1).on('child_added', snap => {
-                let val = snap.val();
-                if(val && val.audio && Date.now() - val.timestamp < 10000 && val.uid !== myUid) {
-                    let audio = new Audio(val.audio);
-                    audio.play().catch(e => console.log("Audio play blocked"));
-                }
             });
         }
 
@@ -301,7 +312,6 @@
             if (markers[uid]) markers[uid].setLatLng(latlng).setIcon(icon);
             else markers[uid] = L.marker(latlng, {icon: icon}).addTo(map);
 
-            // 軌跡線條
             if (!polylines[uid]) polylines[uid] = L.polyline([], {color: 'blue', weight: 3}).addTo(map);
             polylines[uid].addLatLng(latlng);
         }
@@ -315,59 +325,31 @@
             if(myUid) db.ref('users/' + myUid).update({ lat: e.latlng.lat, lng: e.latlng.lng });
         });
 
-        // --- 4. 狀態按鈕與 PPT (真實語音功能) ---
+        // --- 4. 狀態按鈕與 PPT (信號模式) ---
         function setStatus(btn, status, color) {
             if(!myUid) return alert("請先登入");
-            playSnd('sndBike'); // 機能鍵 (自行車鈴聲)
+            playSnd('sndBike'); // 機能鍵音效: 鈴鐺聲
             db.ref('users/' + myUid).update({ status: status, color: color });
         }
 
         function setupPPT() {
             const btn = document.getElementById('pptBtn');
-            
-            // 嘗試取得麥克風權限
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    mediaRecorder = new MediaRecorder(stream);
-                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                    mediaRecorder.onstop = uploadVoice;
-                })
-                .catch(e => console.log("Mic permission denied or not HTTPS"));
-
+            // 按下發聲 (模擬無線電開始)
             const start = (e) => { 
                 e.preventDefault(); 
-                btn.classList.add('talking'); btn.innerText = "發話中"; 
+                btn.classList.add('talking'); btn.innerText = "發信中"; 
                 playSnd('sndPtt'); 
-                audioChunks = [];
-                if(mediaRecorder && mediaRecorder.state === "inactive") mediaRecorder.start();
             };
-            
+            // 放開 (模擬無線電結束)
             const end = (e) => { 
                 e.preventDefault(); 
                 btn.classList.remove('talking'); btn.innerText = "PPT"; 
-                if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
             };
 
             btn.addEventListener('touchstart', start);
             btn.addEventListener('touchend', end);
             btn.addEventListener('mousedown', start);
             btn.addEventListener('mouseup', end);
-        }
-
-        function uploadVoice() {
-            if(!myUid) return;
-            const blob = new Blob(audioChunks, { type: 'audio/webm' });
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-                let base64data = reader.result;
-                // 寫入資料庫 (真實語音傳送)
-                db.ref('voice').push({
-                    uid: myUid,
-                    audio: base64data,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                });
-            };
         }
 
         // --- 輔助功能 ---
