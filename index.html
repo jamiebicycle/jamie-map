@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂單車賽事調度板 (V5.2)</title>
+    <title>捷米樂單車賽事調度板 (V5.3)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,70 +14,37 @@
 
     <style>
         /* --- 1. 基礎設定 & iPhone 安全區域修正 --- */
-        * { 
-            box-sizing: border-box; 
-            margin: 0; padding: 0; 
-            font-family: "Microsoft JhengHei", sans-serif; 
-            -webkit-tap-highlight-color: transparent;
-            /* [新增] iOS 優化：禁止雙擊縮放 */
-            touch-action: manipulation; 
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         
         body { 
-            overflow: hidden; 
-            background-color: #eee; 
-            width: 100vw; 
-            /* 關鍵：使用 dvh 解決手機瀏覽器網址列遮擋問題 */
-            height: 100dvh; 
-            display: flex;
-            flex-direction: column;
-            /* [新增] iOS 優化：禁止長按選取文字 */
-            user-select: none; -webkit-user-select: none;
+            overflow: hidden; background-color: #eee; width: 100vw; height: 100dvh; 
+            display: flex; flex-direction: column; user-select: none; -webkit-user-select: none;
         }
 
         /* --- 2. 版面配置 --- */
-        /* 上方工具列 (避開靈動島) */
         .top-bar {
-            flex: 0 0 auto;
-            background: rgba(255,255,255,0.95); 
-            /* [修正] 增加頂部安全距離，避開靈動島 */
-            padding-top: max(12px, env(safe-area-inset-top)); 
-            padding-bottom: 8px;
+            flex: 0 0 auto; background: rgba(255,255,255,0.95); 
+            padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px;
             padding-left: 10px; padding-right: 10px;
             display: flex; justify-content: space-between; gap: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 2000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000;
         }
 
-        /* 中間地圖 */
-        #map-container {
-            flex: 1; 
-            position: relative;
-            width: 100%;
-            overflow: hidden;
-        }
+        #map-container { flex: 1; position: relative; width: 100%; overflow: hidden; }
         #map { width: 100%; height: 100%; z-index: 0; }
 
-        /* 下方工具列 (避開 Home Bar) */
         .bottom-area {
-            flex: 0 0 auto;
-            display: flex; flex-direction: column; gap: 5px; 
-            padding: 10px;
-            /* [修正] 增加底部安全距離 */
-            padding-bottom: max(20px, env(safe-area-inset-bottom)); 
-            background: #222;
-            z-index: 2000;
-            color: white;
+            flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px; 
+            padding: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+            background: #222; z-index: 2000; color: white;
         }
 
-        /* --- UI 元件 (維持 V4.2.1 原樣) --- */
+        /* --- UI 元件 --- */
         .top-btn {
-            flex: 1; border: none; border-radius: 8px; /* 圓角加大 */
-            font-weight: bold; font-size: 14px; cursor: pointer;
+            flex: 1; border: none; border-radius: 8px; font-weight: bold;
+            font-size: 14px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 5px;
-            text-decoration: none; color: #333; border: 1px solid #ccc;
-            background: white;
-            height: 44px; /* 加大觸控區 */
+            text-decoration: none; color: #333; border: 1px solid #ccc; background: white; height: 44px;
         }
         .top-btn:active { background: #f0f0f0; transform: scale(0.98); }
         .btn-zello { background-color: #ff9800; color: white; border-color: #e65100; }
@@ -85,15 +52,14 @@
 
         /* GPS 按鈕 */
         .gps-float-btn {
-            position: absolute; top: 15px; right: 15px;
-            width: 50px; height: 50px;
+            position: absolute; top: 15px; right: 15px; width: 50px; height: 50px;
             background-color: white; border: 2px solid #ccc; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 1000;
             font-size: 24px; color: #333;
         }
 
-        /* 鎖定畫面 (等候室) */
+        /* 鎖定畫面 */
         #lockScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); color: white; z-index: 9999;
@@ -104,8 +70,8 @@
 
         /* 選單 */
         .dropdown-menu {
-            position: fixed; top: 80px; left: 10px; /* 配合 Top Bar 高度 */
-            background: white; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            position: fixed; top: 80px; left: 10px; background: white;
+            border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             display: none; flex-direction: column; width: 260px;
             overflow: hidden; max-height: 60vh; overflow-y: auto; z-index: 3000;
         }
@@ -143,7 +109,7 @@
         .public-announcement {
             background: rgba(0, 0, 0, 0.85); color: #ffeb3b; padding: 10px; border-radius: 6px; font-size: 15px;
             text-align: center; display: block; border: 2px solid #fbc02d; margin-bottom: 5px;
-            box-shadow: 0 0 10px rgba(255, 235, 59, 0.2); font-weight: bold;
+            box-shadow: 0 0 10px rgba(255, 235, 59, 0.2); font-weight: bold; cursor: pointer; /* 修正A: 顯示可點擊 */
         }
         .admin-private-wall {
             background: rgba(13, 71, 161, 0.9); color: #fff; padding: 5px; border-radius: 5px; font-size: 12px;
@@ -167,6 +133,8 @@
         }
 
         #gpxInput { display: none; }
+        /* 修正D: 連結樣式 */
+        .chat-link { color: #4fc3f7; text-decoration: underline; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -204,7 +172,9 @@
 
     <div class="bottom-area pointer-auto">
         <div id="adminPrivateWall" class="admin-private-wall"></div>
-        <div id="publicAnnouncement" class="public-announcement">📢 公告：請登入以開始使用</div>
+        <div id="publicAnnouncement" class="public-announcement" onclick="editAnnouncement()">
+            ?? 公告：請登入以開始使用
+        </div>
         <div class="status-bar">
             <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
             <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
@@ -223,13 +193,13 @@
         <div class="menu-group-title">個人設定</div>
         <div onclick="changeNickname()"><i class="fa-solid fa-pen"></i> 修改暱稱</div>
 
-        <div class="menu-group-title">地圖管理</div>
-        <label for="gpxInput"><i class="fa-solid fa-folder-open"></i> 匯入 GPX</label>
+        <div class="menu-group-title admin-only">地圖管理</div>
+        <label for="gpxInput" class="admin-only"><i class="fa-solid fa-folder-open"></i> 匯入 GPX</label>
         <input type="file" id="gpxInput" accept=".gpx" onchange="loadGPX(this)">
-        <div class="text-danger" onclick="removeGPX()"><i class="fa-solid fa-trash-can"></i> 清除 GPX</div>
+        <div class="text-danger admin-only" onclick="removeGPX()"><i class="fa-solid fa-trash-can"></i> 清除 GPX</div>
 
-        <div class="menu-group-title">聊天室管理</div>
-        <div onclick="exportChatXLS()"><i class="fa-solid fa-file-excel"></i> 匯出紀錄</div>
+        <div class="menu-group-title admin-only">聊天室管理</div>
+        <div class="admin-only" onclick="exportChatXLS()"><i class="fa-solid fa-file-excel"></i> 匯出紀錄</div>
         
         <div style="text-align:center; background:#eee; padding:12px;" onclick="toggleMenu()">▲ 關閉選單</div>
     </div>
@@ -252,7 +222,6 @@
 
     <script>
         // --- 1. Firebase Config (請務必在此填入您的 API Key) ---
-        const firebaseConfig = {
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
             authDomain: "jamielove-map.firebaseapp.com",
             databaseURL: "https://jamielove-map-default-rtdb.firebaseio.com",
@@ -273,7 +242,7 @@
 
         // --- 2. 全域變數 ---
         var map = L.map('map', { zoomControl: true }).setView([24.1477, 120.6736], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'c OpenStreetMap' }).addTo(map);
 
         let isAdmin = false;
         let isChatOpen = false;
@@ -282,8 +251,10 @@
         let userNickname = "訪客";
         let markers = {}; 
         let polylines = {};
+        // 修正C: 防止重複監聽標記
+        let listenersStarted = false;
 
-        // --- 3. 音效 (維持 V4.2.1 原版設定) ---
+        // --- 3. 音效 (維持 V4.2.1 原版) ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContext();
         function playSound(type) {
@@ -348,7 +319,7 @@
                     document.getElementById('loginBtn').innerHTML = `<i class="fa-brands fa-google"></i> 登入`;
                     showLockScreen(false);
                     updateAdminUI();
-                    document.getElementById('publicAnnouncement').innerText = "📢 請先登入 Google 帳號";
+                    document.getElementById('publicAnnouncement').innerText = "?? 請先登入 Google 帳號";
                 }
             });
             
@@ -392,11 +363,10 @@
         }
 
         function askAdminPassword() {
-            // [資安防護修正]：檢查雙重身分 (users role & admins node)
             db.ref('users/' + myUid + '/role').once('value', snap => {
                 if(snap.val() === 'admin') {
                     isAdmin = true; 
-                    // [資安補強] 確保 admins 節點也有此人，防止被規則擋下
+                    // [資安] 確保 admins 節點也有此人
                     db.ref('admins/' + myUid).set(true);
                     updateAdminUI();
                     return;
@@ -406,10 +376,10 @@
                     let input = prompt(`歡迎 ${userNickname}！\n若您是管理員，請輸入密碼：\n(一般成員請按取消)`);
                     if (input === "Fire_Fire_54889427") { 
                         isAdmin = true;
-                        // [資安補強] 同時寫入 users 與 admins 節點
+                        // [資安] 同時寫入權限
                         db.ref('users/' + myUid).update({ role: 'admin' }); 
                         db.ref('admins/' + myUid).set(true); 
-                        alert("管理員權限已啟動 🛡️");
+                        alert("管理員權限已啟動 ???");
                     }
                     updateAdminUI();
                 }, 500);
@@ -430,6 +400,10 @@
         }
 
         function initListeners() {
+            // 修正C: 防止重複監聽
+            if(listenersStarted) return;
+            listenersStarted = true;
+
             db.ref('users').on('value', (snapshot) => {
                 const users = snapshot.val() || {};
                 Object.keys(users).forEach(uid => {
@@ -455,7 +429,7 @@
 
             db.ref('announcement').on('value', (snapshot) => {
                 const val = snapshot.val();
-                if (val) document.getElementById('publicAnnouncement').innerText = "📢 " + val.text;
+                if (val) document.getElementById('publicAnnouncement').innerText = "?? " + val.text;
             });
         }
 
@@ -467,6 +441,15 @@
             let latlng = [u.lat, u.lng];
             
             if (markers[uid]) {
+                // 修正E: 只有位置真的改變時，才畫軌跡，避免原地重複畫點消耗資源
+                let oldLatLng = markers[uid].getLatLng();
+                if (oldLatLng.distanceTo(latlng) > 5) { // 移動超過5米才畫線
+                    if (!polylines[uid]) {
+                        polylines[uid] = L.polyline([], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
+                    }
+                    polylines[uid].addLatLng(latlng);
+                }
+                // Marker 永遠更新
                 markers[uid].setLatLng(latlng);
                 markers[uid].setIcon(icon);
                 markers[uid].getPopup().setContent(popupContent);
@@ -474,12 +457,12 @@
                 let m = L.marker(latlng, { icon: icon }).addTo(map);
                 m.bindPopup(popupContent);
                 markers[uid] = m;
+                // 初始化軌跡
+                if (!polylines[uid]) {
+                    polylines[uid] = L.polyline([], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
+                    polylines[uid].addLatLng(latlng);
+                }
             }
-
-            if (!polylines[uid]) {
-                polylines[uid] = L.polyline([], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
-            }
-            polylines[uid].addLatLng(latlng);
         }
 
         function createAvatarIcon(bgColor, name, status) {
@@ -561,15 +544,26 @@
             }
         }
 
+        // 修正D: 連結顯示函式
+        function linkify(text) {
+            var urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, function(url) {
+                return '<a class="chat-link" href="' + url + '" target="_blank">' + url + '</a>';
+            });
+        }
+
         function renderMessage(msg) {
             const body = document.getElementById('chatBody');
             const div = document.createElement('div');
             div.style.marginBottom = "8px";
             let date = new Date(msg.timestamp);
             let timeStr = date.getHours() + ":" + String(date.getMinutes()).padStart(2, '0');
-            div.dataset.time = timeStr; div.dataset.sender = msg.sender; div.dataset.content = msg.text;
+            
+            // 使用 linkify 處理訊息內容
+            let content = linkify(msg.text);
+            
             let color = (msg.role === "admin") ? "#ffeb3b" : "#aaa";
-            div.innerHTML = `<span style='color:${color}; font-size:12px;'>[${timeStr} ${msg.sender}]</span> <span style="color:white;">${msg.text}</span>`;
+            div.innerHTML = `<span style='color:${color}; font-size:12px;'>[${timeStr} ${msg.sender}]</span> <span style="color:white;">${content}</span>`;
             body.appendChild(div);
             body.scrollTop = body.scrollHeight;
         }
@@ -605,7 +599,7 @@
                 db.ref('announcement').set({ text: msg });
                 db.ref('chat').push({ text: msg, sender: "系統公告", type: "announcement", timestamp: firebase.database.ServerValue.TIMESTAMP });
             }
-            toggleMenu();
+            // 不關閉選單，因為可能是從下方點擊的
         }
         
         function removeGPX() { if(currentGpxLayer) { map.removeLayer(currentGpxLayer); currentGpxLayer = null; alert("已清除"); } toggleMenu(); }
