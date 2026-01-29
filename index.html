@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>捷米樂單車賽事調度板 (V5.3)</title>
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
     <style>
         /* 嚴格保留 V4.2.1 原始 CSS 樣式 [cite: 1-60] */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -29,21 +26,15 @@
         .menu-group-title { background-color: #eee; font-size: 13px; color: #666; padding: 8px 12px; font-weight: bold; }
         .dropdown-menu div, .dropdown-menu label { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 16px; display: flex; align-items: center; gap: 10px; }
         .admin-only { display: none !important; } 
-        .chat-window { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; height: 60vh; background: rgba(30, 30, 30, 0.98); border-radius: 12px; color: white; display: none; flex-direction: column; z-index: 4000; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid #555; }
-        .chat-header { background: #1976d2; padding: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; border-radius: 12px 12px 0 0;}
-        .chat-body { flex: 1; padding: 10px; overflow-y: auto; font-size: 15px; }
-        .chat-input-area { display: flex; padding: 10px; background: #222; border-radius: 0 0 12px 12px; }
-        .chat-input-area input { flex: 1; padding: 10px; border-radius: 6px; border: none; font-size: 16px; }
-        .chat-input-area button { margin-left: 8px; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; }
         .status-bar { display: flex; gap: 8px; height: 55px; }
-        .status-btn { flex: 1; border: none; color: white; font-weight: bold; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.4); opacity: 0.6; }
-        .status-btn.active { opacity: 1; transform: scale(1.02); border: 2px solid white; box-shadow: 0 0 10px white; }
-        .public-announcement { background: rgba(0, 0, 0, 0.85); color: #ffeb3b; padding: 10px; border-radius: 6px; font-size: 15px; text-align: center; display: block; border: 2px solid #fbc02d; margin-bottom: 5px; box-shadow: 0 0 10px rgba(255, 235, 59, 0.2); font-weight: bold; }
+        .status-btn { flex: 1; border: none; color: white; font-weight: bold; font-size: 16px; border-radius: 8px; cursor: pointer; opacity: 0.6; }
+        .status-btn.active { opacity: 1; border: 2px solid white; box-shadow: 0 0 10px white; }
+        .public-announcement { background: rgba(0, 0, 0, 0.85); color: #ffeb3b; padding: 10px; border-radius: 6px; font-size: 15px; text-align: center; border: 2px solid #fbc02d; font-weight: bold; }
         .admin-private-wall { background: rgba(13, 71, 161, 0.9); color: #fff; padding: 5px; border-radius: 5px; font-size: 12px; display: none; border-left: 4px solid #00e5ff; margin-bottom: 5px; max-height: 60px; overflow-y: auto; }
+        /* 原始頭像與標籤樣式 [cite: 53-59] */
         .custom-avatar { text-align: center; }
-        .user-avatar-icon { background-color: #2196f3; color: white; border: 2px solid white; border-radius: 50%; text-align: center; line-height: 36px; font-weight: bold; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); width: 36px !important; height: 36px !important; margin: 0 auto; }
-        .status-label { background: white; border: 1px solid #ccc; border-radius: 4px; padding: 2px 5px; font-size: 12px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.3); font-weight: bold; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); z-index: 100; }
-        #gpxInput { display: none; }
+        .user-avatar-icon { background-color: #2196f3; color: white; border: 2px solid white; border-radius: 50%; width: 36px; height: 36px; line-height: 36px; text-align: center; font-weight: bold; font-size: 18px; }
+        .status-label { background: white; border: 1px solid #ccc; border-radius: 4px; padding: 2px 5px; font-size: 12px; font-weight: bold; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); z-index: 100; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
@@ -81,12 +72,15 @@
     <div id="dropdownList" class="dropdown-menu">
         <div class="menu-group-title admin-only">管理員專區</div>
         <div class="admin-only" onclick="reviewMembers()"><i class="fa-solid fa-user-check"></i> 審核成員</div>
-        <div class="admin-only" onclick="deleteMember()"><i class="fa-solid fa-user-minus"></i> 成員管理刪除</div> <div class="admin-only" onclick="editAnnouncement()"><i class="fa-solid fa-bullhorn"></i> 發布公告/管理訊息牆</div> <div class="admin-only text-danger" onclick="clearChat()"><i class="fa-solid fa-eraser"></i> 清空聊天紀錄</div>
+        <div class="admin-only" onclick="deleteMember()"><i class="fa-solid fa-user-minus"></i> 成員管理刪除</div>
+        <div class="admin-only" onclick="editAnnouncement()"><i class="fa-solid fa-bullhorn"></i> 發布公告/管理訊息牆</div>
+        <div class="admin-only text-danger" onclick="clearChat()"><i class="fa-solid fa-eraser"></i> 清空聊天紀錄</div>
         
         <div class="menu-group-title">個人設定</div>
         <div onclick="changeNickname()"><i class="fa-solid fa-pen"></i> 修改暱稱</div>
         
-        <div class="menu-group-title admin-only">地圖與管理</div> <label for="gpxInput" class="admin-only"><i class="fa-solid fa-folder-open"></i> 匯入 GPX</label>
+        <div class="menu-group-title admin-only">地圖管理</div>
+        <label for="gpxInput" class="admin-only"><i class="fa-solid fa-folder-open"></i> 匯入 GPX</label>
         <input type="file" id="gpxInput" accept=".gpx" onchange="loadGPX(this)">
         <div class="admin-only" onclick="exportChatXLS()"><i class="fa-solid fa-file-excel"></i> 匯出紀錄</div>
         
@@ -102,12 +96,9 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
-
     <script>
-        // 1. Firebase 設定 (請務必填入您的金鑰) 
-        const firebaseConfig = { 
+        // --- 1. 請填入您的 Firebase Config [cite: 69-70] ---
+        const firebaseConfig = {
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
             authDomain: "jamielove-map.firebaseapp.com",
             databaseURL: "https://jamielove-map-default-rtdb.firebaseio.com",
@@ -125,7 +116,7 @@
 
         let isAdmin = false, myUid = null, userNickname = "訪客", markers = {}, polylines = {};
 
-        // 2. 指令：三種音效模擬修復 (門鈴/MSN/自行車鈴) 
+        // --- 2. 指令：三種規定的音效 (門鈴/MSN/自行車鈴)  ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContext();
 
@@ -136,37 +127,37 @@
             const g = audioCtx.createGain();
             osc.connect(g); g.connect(audioCtx.destination);
 
-            if (type === 'doorbell') { // 登入/公告 (門鈴)
+            if (type === 'doorbell') { // 門鈴聲 (登入/公告)
                 osc.type = 'sine'; osc.frequency.setValueAtTime(660, now); osc.frequency.setValueAtTime(520, now + 0.5);
                 g.gain.setValueAtTime(0.3, now); g.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
                 osc.start(now); osc.stop(now + 1.2);
-            } else if (type === 'msn') { // 聊天 (MSN)
+            } else if (type === 'msn') { // MSN聲 (聊天)
                 osc.type = 'triangle'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
                 g.gain.setValueAtTime(0.2, now); g.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                 osc.start(now); osc.stop(now + 0.3);
-            } else if (type === 'bike') { // 機能鍵 (自行車鈴)
+            } else if (type === 'bike') { // 自行車鈴聲 (機能鍵)
                 osc.type = 'square'; osc.frequency.setValueAtTime(2000, now);
                 g.gain.setValueAtTime(0.1, now); g.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(now); osc.stop(now + 0.1);
             }
         }
 
-        // 3. 登入與管理員權限邏輯 (指令 1) [cite: 109-112]
+        // --- 3. 初始化與登入 (管理員密碼詢問修復) [cite: 83-93, 110-112] ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 myUid = user.uid; userNickname = user.displayName || "隊員";
                 document.getElementById('loginBtn').innerText = "登出";
                 db.ref('users/' + myUid).once('value').then(snap => {
                     let u = snap.val();
-                    if (!u) { db.ref('users/'+myUid).set({ nickname: userNickname, role: 'pending' }); showLockScreen(true); }
+                    if (!u) { db.ref('users/'+myUid).set({ nickname: userNickname, role: 'pending', status: '待命' }); showLockScreen(true); }
                     else if (u.role === 'pending') showLockScreen(true);
                     else { showLockScreen(false); enterMainSystem(); }
                 });
-            } else { myUid = null; showLockScreen(false); updateAdminUI(); }
+            } else { location.reload(); }
         });
 
         function enterMainSystem() {
-            playSound('doorbell'); // 登入音效
+            playSound('doorbell'); // 登入門鈴聲
             askAdminPassword();
             initListeners();
         }
@@ -175,8 +166,8 @@
             db.ref('users/' + myUid + '/role').once('value', snap => {
                 if (snap.val() === 'admin') { isAdmin = true; updateAdminUI(); return; }
                 setTimeout(() => {
-                    let pw = prompt("請輸入管理員密碼：");
-                    if (pw === "Fire_Fire_54889427") { isAdmin = true; db.ref('users/'+myUid).update({ role: 'admin' }); alert("管理員權限啟動"); }
+                    let pw = prompt("歡迎管理員，請輸入登入密碼：");
+                    if (pw === "FireFire54889427") { isAdmin = true; db.ref('users/'+myUid).update({ role: 'admin' }); alert("管理員權限已啟動"); }
                     updateAdminUI();
                 }, 500);
             });
@@ -188,7 +179,7 @@
             document.getElementById('adminPrivateWall').style.display = isAdmin ? 'block' : 'none';
         }
 
-        // 4. 指令 5：定位與軌跡繪製 [cite: 124-131]
+        // --- 4. 定位、狀態與軌跡 (保持原始頭像與標籤) [cite: 124-131] ---
         function initListeners() {
             db.ref('users').on('value', snap => {
                 const users = snap.val() || {};
@@ -199,13 +190,13 @@
                 });
             });
             db.ref('chat').limitToLast(1).on('child_added', snap => {
-                if (Date.now() - snap.val().timestamp < 5000) playSound('msn'); // 聊天音效
+                if (Date.now() - snap.val().timestamp < 5000) playSound('msn'); // 聊天聲
                 renderMessage(snap.val());
             });
             db.ref('announcement').on('value', snap => {
                 if (snap.val()) {
                     document.getElementById('publicAnnouncement').innerText = "公告：" + snap.val().text;
-                    playSound('doorbell'); // 公告音效
+                    playSound('doorbell'); // 公告聲
                 }
             });
         }
@@ -213,19 +204,27 @@
         function updateMarker(uid, u) {
             if (!u.lat || !u.lng) return;
             let latlng = [u.lat, u.lng];
-            if (!markers[uid]) markers[uid] = L.marker(latlng).addTo(map).bindPopup(u.nickname);
-            else markers[uid].setLatLng(latlng);
+            let statusText = u.status || '...';
+            let icon = createAvatarIcon(u.color || "#2196f3", u.nickname, statusText);
+            if (!markers[uid]) markers[uid] = L.marker(latlng, {icon: icon}).addTo(map).bindPopup(u.nickname);
+            else { markers[uid].setLatLng(latlng); markers[uid].setIcon(icon); }
             if (!polylines[uid]) polylines[uid] = L.polyline([], {color: 'blue', weight: 3}).addTo(map);
-            polylines[uid].addLatLng(latlng); // 軌跡繪製
+            polylines[uid].addLatLng(latlng); // 指令：軌跡繪製
         }
 
-        // 5. 指令 2 & 4：成員管理與機能鍵音效 [cite: 139-144]
+        function createAvatarIcon(bgColor, name, status) {
+            let initial = name ? name.charAt(0) : "?";
+            let statusHtml = status ? `<div class="status-label" style="color:${bgColor}">${status}</div>` : '';
+            return L.divIcon({ className: 'custom-avatar', html: `${statusHtml}<div class="user-avatar-icon" style="background-color:${bgColor};">${initial}</div>`, iconSize: [36, 36], iconAnchor: [18, 18] });
+        }
+
+        // --- 5. 指令功能：成員刪除與公告連動 [cite: 139-141, 159-160] ---
         function deleteMember() {
             if(!isAdmin) return;
             db.ref('users').once('value', snap => {
                 let users = snap.val();
                 let list = ""; Object.keys(users).forEach(k => list += `${users[k].nickname}\n`);
-                let target = prompt("輸入要刪除的成員暱稱：\n" + list);
+                let target = prompt("請輸入要刪除的成員暱稱：\n" + list);
                 if(target) {
                     let uid = Object.keys(users).find(k => users[k].nickname === target);
                     if(uid && confirm(`確定刪除 ${target}？`)) db.ref('users/'+uid).remove();
@@ -235,32 +234,31 @@
 
         function setStatus(btn, txt, col) {
             if(!myUid) return;
-            playSound('bike'); // 機能鍵音效
+            playSound('bike'); // 指令：機能鍵自行車鈴聲
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             db.ref('users/'+myUid).update({ status: txt, color: col });
-            if(isAdmin) logToAdmin(`${userNickname}: ${txt}`);
+            if(isAdmin) { let time = new Date().toLocaleTimeString(); document.getElementById('adminPrivateWall').innerHTML = `<div>[${time}] ${userNickname}: ${txt}</div>` + document.getElementById('adminPrivateWall').innerHTML; }
         }
 
-        // 6. 指令 3：公告連動訊息牆 [cite: 159-160]
         function editAnnouncement() {
             if(!isAdmin) return;
-            let msg = prompt("請輸入新公告：");
-            if(msg) {
+            let msg = prompt("請輸入公告內容：");
+            if (msg) {
                 db.ref('announcement').set({ text: msg });
+                // 指令：公告同步至訊息牆 [cite: 160]
                 db.ref('chat').push({ text: "【系統公告】" + msg, sender: "管理員", timestamp: Date.now(), role: 'admin' });
             }
-            toggleMenu();
         }
 
-        // 其他功能保留 [cite: 148-170]
         function sendMsg() {
             let val = document.getElementById('msgInput').value;
-            if(val) { db.ref('chat').push({ text: val, sender: userNickname, timestamp: Date.now() }); document.getElementById('msgInput').value = ""; }
+            if(val.trim()) { db.ref('chat').push({ text: val, sender: userNickname, timestamp: Date.now(), role: isAdmin?'admin':'member' }); document.getElementById('msgInput').value = ""; }
         }
         function renderMessage(m) {
             let d = document.createElement('div');
-            d.innerHTML = `<span style="color:#aaa; font-size:12px;">${m.sender}:</span> ${m.text}`;
+            let color = (m.role === "admin") ? "#ffeb3b" : "#aaa";
+            d.innerHTML = `<span style="color:${color}; font-size:12px;">${m.sender}:</span> ${m.text}`;
             document.getElementById('chatBody').appendChild(d);
             document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
         }
@@ -268,7 +266,7 @@
         function handleLogout() { auth.signOut().then(()=>location.reload()); }
         function toggleMenu() { let m = document.getElementById('dropdownList'); m.style.display = m.style.display==='flex'?'none':'flex'; }
         function toggleChat() { let c = document.getElementById('chatWindow'); c.style.display = c.style.display==='flex'?'none':'flex'; }
-        function showLockScreen(s) { document.getElementById('lockScreen').style.display = s?'flex':'none'; }
+        function showLockScreen(s) { document.getElementById('lockScreen').style.display = s?'flex':'none'; if(!s) initListeners(); }
         function locateUser() { map.locate({setView: true, maxZoom: 16}); }
         map.on('locationfound', e => { if(myUid) db.ref('users/'+myUid).update({lat: e.latlng.lat, lng: e.latlng.lng}); });
         document.body.addEventListener('click', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); }, {once:true});
