@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂單車賽事調度板 (V5.3)</title>
+    <title>捷米樂單車賽事調度板 (5.3)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -135,6 +135,7 @@
 
     <script>
         // --- 請確認填寫 Firebase Config ---
+        const firebaseConfig = {            
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
             authDomain: "jamielove-map.firebaseapp.com",
             databaseURL: "https://jamielove-map-default-rtdb.firebaseio.com",
@@ -153,7 +154,7 @@
         auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
         var map = L.map('map', { zoomControl: true }).setView([24.1477, 120.6736], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'c OpenStreetMap' }).addTo(map);
 
         let isAdmin = false;
         let isChatOpen = false;
