@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂單車賽事調度板 (v5.4)</title>
+    <title>捷米樂單車賽事調度板(v5.3)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -171,7 +171,7 @@
 
     <div class="bottom-area pointer-auto">
         <div id="adminPrivateWall" class="admin-private-wall"></div>
-        <div id="publicAnnouncement" class="public-announcement" onclick="editAnnouncement()">📢 公告：請登入以開始使用</div>
+        <div id="publicAnnouncement" class="public-announcement" onclick="editAnnouncement()">?? 公告：請登入以開始使用</div>
         <div class="status-bar">
             <button class="status-btn st-going" onclick="setStatus(this, '前往中', '#d32f2f')">前往中</button>
             <button class="status-btn st-arrived" onclick="setStatus(this, '已抵達', '#fbc02d')">已抵達</button>
@@ -248,7 +248,7 @@
 
         // --- 全域變數 ---
         var map = L.map('map', { zoomControl: true }).setView([24.1477, 120.6736], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'c OpenStreetMap' }).addTo(map);
 
         let isAdmin = false;
         let isChatOpen = false;
@@ -316,7 +316,7 @@
                     document.getElementById('loginBtn').innerHTML = `<i class="fa-brands fa-google"></i> 登入`;
                     showLockScreen(false);
                     updateAdminUI();
-                    document.getElementById('publicAnnouncement').innerText = "📢 請先登入 Google 帳號";
+                    document.getElementById('publicAnnouncement').innerText = "?? 請先登入 Google 帳號";
                 }
             });
             
@@ -373,7 +373,7 @@
                         isAdmin = true;
                         db.ref('users/' + myUid).update({ role: 'admin' }); 
                         db.ref('admins/' + myUid).set(true);
-                        alert("管理員權限已啟動 🛡️");
+                        alert("管理員權限已啟動 ???");
                     }
                     updateAdminUI();
                 }, 500);
@@ -419,7 +419,7 @@
             db.ref('announcement').on('value', (snapshot) => {
                 const val = snapshot.val();
                 if (val) {
-                    document.getElementById('publicAnnouncement').innerText = "📢 " + val.text;
+                    document.getElementById('publicAnnouncement').innerText = "?? " + val.text;
                     playSnd('sndDoorbell'); // 公告音效
                 }
             });
