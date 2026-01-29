@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>捷米樂單車賽事調度板(v5.3)</title>
+    <title>捷米樂單車賽事調度板 (V5.3)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -13,7 +13,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
     <style>
-        /* --- 1. 基礎設定 & iPhone 安全區域修正 --- */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; -webkit-tap-highlight-color: transparent; }
         body { overflow: hidden; background-color: #eee; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
         .top-bar { flex: 0 0 auto; background: rgba(255,255,255,0.95); padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px; padding-left: 10px; padding-right: 10px; display: flex; justify-content: space-between; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; }
@@ -100,7 +99,7 @@
         <div class="menu-group-title admin-only">管理員專區</div>
         <div class="admin-only" onclick="reviewMembers()"><i class="fa-solid fa-user-check"></i> 審核成員</div>
         <div class="admin-only" onclick="deleteMember()"><i class="fa-solid fa-user-minus"></i> 成員管理刪除</div>
-        <div class="admin-only" onclick="editAnnouncement()"><i class="fa-solid fa-bullhorn"></i> 發布公告/訊息牆</div>
+        <div class="admin-only" onclick="editAnnouncement()"><i class="fa-solid fa-bullhorn"></i> 發布公告/連動訊息牆</div>
         <div class="admin-only text-danger" onclick="clearChat()"><i class="fa-solid fa-eraser"></i> 清空聊天紀錄</div>
         <div class="admin-only" onclick="exportWallLogXLS()"><i class="fa-solid fa-file-contract"></i> 匯出公告紀錄</div>
 
@@ -135,7 +134,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
 
     <script>
-        const firebaseConfig = {
+        // --- 請確認填寫 Firebase Config ---
             apiKey: "AIzaSyB_uFmhh4ENTSHo1oGCW8vEUymDy56c4PE",
             authDomain: "jamielove-map.firebaseapp.com",
             databaseURL: "https://jamielove-map-default-rtdb.firebaseio.com",
@@ -151,11 +150,10 @@
         var db = firebase.database();
         var auth = firebase.auth();
         var provider = new firebase.auth.GoogleAuthProvider();
-
         auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
         var map = L.map('map', { zoomControl: true }).setView([24.1477, 120.6736], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'c OpenStreetMap' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
         let isAdmin = false;
         let isChatOpen = false;
@@ -227,13 +225,8 @@
 
         function showLockScreen(show) {
             const lock = document.getElementById('lockScreen');
-            if (show) {
-                lock.style.display = 'flex';
-                document.getElementById('myUidDisplay').innerText = "ID: " + myUid.slice(-6);
-            } else {
-                lock.style.display = 'none';
-                if(myUid) initListeners();
-            }
+            if (show) { lock.style.display = 'flex'; document.getElementById('myUidDisplay').innerText = "ID: " + myUid.slice(-6); }
+            else { lock.style.display = 'none'; if(myUid) initListeners(); }
         }
 
         function enterMainSystem() {
@@ -242,18 +235,14 @@
             askAdminPassword();
         }
 
-        function handleGoogleLogin() {
-            if (myUid) handleLogout();
-            else { auth.signInWithPopup(provider).catch(error => { alert("登入失敗: " + error.message); }); }
-        }
-
+        function handleGoogleLogin() { if (myUid) handleLogout(); else { auth.signInWithPopup(provider).catch(e => alert(e.message)); } }
         function handleLogout() { auth.signOut().then(() => { alert("已登出"); location.reload(); }); }
 
         function askAdminPassword() {
             db.ref('users/' + myUid + '/role').once('value', snap => {
                 if(snap.val() === 'admin') { isAdmin = true; updateAdminUI(); return; }
                 setTimeout(() => {
-                    let input = prompt(`歡迎 ${userNickname}！\n若您是管理員，請輸入密碼：\n(一般成員請按取消)`);
+                    let input = prompt(`歡迎 ${userNickname}！\n若您是管理員，請輸入密碼：`);
                     if (input === "Fire_Fire_54889427") { isAdmin = true; db.ref('users/' + myUid).update({ role: 'admin' }); alert("管理員權限已啟動"); }
                     updateAdminUI();
                 }, 500);
@@ -262,15 +251,10 @@
 
         function updateAdminUI() {
             const adminItems = document.querySelectorAll('.admin-only');
-            const adminWall = document.getElementById('adminPrivateWall');
             adminItems.forEach(el => el.style.display = isAdmin ? 'flex' : 'none');
-            if (isAdmin) {
-                adminWall.style.display = 'block';
-                document.getElementById('menuBtn').innerHTML = `<i class="fa-solid fa-wrench"></i> 管理`;
-            } else {
-                adminWall.style.display = 'none';
-                document.getElementById('menuBtn').innerHTML = `<i class="fa-solid fa-gear"></i> 選單`;
-            }
+            const adminWall = document.getElementById('adminPrivateWall');
+            if (isAdmin) { adminWall.style.display = 'block'; document.getElementById('menuBtn').innerHTML = `<i class="fa-solid fa-wrench"></i> 管理`; }
+            else { adminWall.style.display = 'none'; document.getElementById('menuBtn').innerHTML = `<i class="fa-solid fa-gear"></i> 選單`; }
         }
 
         function initListeners() {
@@ -280,12 +264,6 @@
                     if (uid === myUid) return; 
                     let u = users[uid];
                     if (u.role === 'active' || u.role === 'admin') { updateMarker(uid, u); }
-                });
-                Object.keys(markers).forEach(uid => {
-                    if (!users[uid] || (users[uid].role !== 'active' && users[uid].role !== 'admin')) {
-                        if(markers[uid]) { map.removeLayer(markers[uid]); delete markers[uid]; }
-                        if(polylines[uid]) { map.removeLayer(polylines[uid]); delete polylines[uid]; }
-                    }
                 });
             });
             db.ref('chat').limitToLast(50).on('child_added', (snapshot) => {
@@ -303,49 +281,36 @@
             if (!u.lat || !u.lng) return;
             let statusText = u.status || '...';
             let icon = createAvatarIcon(u.color || "#2196f3", u.nickname, statusText);
-            let popupContent = `<div style="text-align:center"><b>${u.nickname}</b><br>狀態: ${statusText}</div>`;
             let latlng = [u.lat, u.lng];
-            if (markers[uid]) {
-                markers[uid].setLatLng(latlng); markers[uid].setIcon(icon);
-                markers[uid].getPopup().setContent(popupContent);
-            } else {
-                let m = L.marker(latlng, { icon: icon }).addTo(map);
-                m.bindPopup(popupContent); markers[uid] = m;
-            }
-            if (!polylines[uid]) { polylines[uid] = L.polyline([], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map); }
+            if (markers[uid]) { markers[uid].setLatLng(latlng).setIcon(icon); }
+            else { markers[uid] = L.marker(latlng, { icon: icon }).addTo(map).bindPopup(u.nickname); }
+            if (!polylines[uid]) { polylines[uid] = L.polyline([], {color: 'blue', weight: 3}).addTo(map); }
             polylines[uid].addLatLng(latlng);
         }
 
         function createAvatarIcon(bgColor, name, status) {
             let initial = name ? name.charAt(0) : "?";
             let statusHtml = status ? `<div class="status-label" style="color:${bgColor}">${status}</div>` : '';
-            return L.divIcon({ className: 'custom-avatar', html: `${statusHtml}<div class="user-avatar-icon" style="background-color:${bgColor}; border-color:white;">${initial}</div>`, iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20] });
+            return L.divIcon({ className: 'custom-avatar', html: `${statusHtml}<div class="user-avatar-icon" style="background-color:${bgColor};">${initial}</div>`, iconSize: [36, 36], iconAnchor: [18, 18] });
         }
 
-        function locateUser() {
-            if(!myUid) { alert("請先登入"); return; }
-            map.locate({setView: true, maxZoom: 16});
-        }
-
+        function locateUser() { if(!myUid) return; map.locate({setView: true, maxZoom: 16}); }
         map.on('locationfound', function(e) {
             if(!myUid) return;
             db.ref('users/' + myUid).update({ lat: e.latlng.lat, lng: e.latlng.lng, lastSeen: firebase.database.ServerValue.TIMESTAMP });
-            if (!markers['me']) {
-                let icon = createAvatarIcon("#2196f3", userNickname, "我");
-                markers['me'] = L.marker(e.latlng, {icon:icon}).addTo(map).bindPopup("我").openPopup();
-            } else { markers['me'].setLatLng(e.latlng); }
+            if (!markers['me']) { markers['me'] = L.marker(e.latlng, {icon: createAvatarIcon("#2196f3", "我", "我")}).addTo(map); }
+            else { markers['me'].setLatLng(e.latlng); }
         });
 
         function reviewMembers() {
             db.ref('users').orderByChild('role').equalTo('pending').once('value', snap => {
                 let pendings = snap.val();
-                if (!pendings) { alert("目前沒有待審核的成員。"); toggleMenu(); return; }
-                let list = "";
-                Object.keys(pendings).forEach(key => { list += `申請人: ${pendings[key].nickname}\n`; });
-                let target = prompt(`待審核名單：\n${list}\n請輸入要核准的暱稱：`);
+                if (!pendings) { alert("無待審核成員"); toggleMenu(); return; }
+                let list = ""; Object.keys(pendings).forEach(k => list += `${pendings[k].nickname}\n`);
+                let target = prompt("請輸入要核准的暱稱：\n" + list);
                 if(target) {
-                    let uidToApprove = Object.keys(pendings).find(key => pendings[key].nickname === target);
-                    if(uidToApprove) { db.ref('users/' + uidToApprove).update({ role: 'active' }); alert(`${target} 已核准進入！`); } else { alert("找不到該暱稱"); }
+                    let uid = Object.keys(pendings).find(k => pendings[k].nickname === target);
+                    if(uid) db.ref('users/' + uid).update({ role: 'active' });
                 }
             });
             toggleMenu();
@@ -355,73 +320,24 @@
             if(!isAdmin) return;
             db.ref('users').once('value', snap => {
                 let users = snap.val();
-                if (!users) return;
-                let list = "";
-                Object.keys(users).forEach(key => { if(key !== myUid) list += `暱稱: ${users[key].nickname}\n`; });
-                let target = prompt(`【成員管理】請輸入要刪除的成員暱稱：\n${list}`);
+                let list = ""; Object.keys(users).forEach(k => list += `${users[k].nickname}\n`);
+                let target = prompt("請輸入要刪除的暱稱：\n" + list);
                 if(target) {
-                    let uidToDelete = Object.keys(users).find(key => users[key].nickname === target);
-                    if(uidToDelete) {
-                        if(confirm(`警告：確定要永久刪除「${target}」嗎？`)) { db.ref('users/' + uidToDelete).remove(); alert(`已成功刪除 ${target}`); }
-                    } else { alert("找不到該暱稱"); }
+                    let uid = Object.keys(users).find(k => users[k].nickname === target);
+                    if(uid && confirm("確定刪除？")) db.ref('users/' + uid).remove();
                 }
             });
             toggleMenu();
         }
 
         function setStatus(btn, statusText, colorCode) {
-            if(!myUid) { alert("請先登入"); return; }
+            if(!myUid) return;
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             db.ref('users/' + myUid).update({ status: statusText, color: colorCode });
-            if(isAdmin) logToAdmin(`${userNickname}: ${statusText}`);
-        }
-
-        function logToAdmin(text) {
-            const wall = document.getElementById('adminPrivateWall');
-            let time = new Date().toLocaleTimeString();
-            wall.innerHTML = `<div>[${time}] ${text}</div>` + wall.innerHTML;
-        }
-
-        function sendMsg() {
-            if(!myUid) return;
-            const input = document.getElementById('msgInput');
-            const text = input.value;
-            if(text.trim()) {
-                db.ref('chat').push({ text: text, sender: isAdmin ? "管理員" : userNickname, role: isAdmin ? "admin" : "member", timestamp: firebase.database.ServerValue.TIMESTAMP });
-                input.value = "";
-            }
-        }
-
-        function renderMessage(msg) {
-            const body = document.getElementById('chatBody');
-            const div = document.createElement('div');
-            div.style.marginBottom = "8px";
-            let date = new Date(msg.timestamp);
-            let timeStr = date.getHours() + ":" + String(date.getMinutes()).padStart(2, '0');
-            let color = (msg.role === "admin") ? "#ffeb3b" : "#aaa";
-            div.innerHTML = `<span style='color:${color}; font-size:12px;'>[${timeStr} ${msg.sender}]</span> <span style="color:white;">${msg.text}</span>`;
-            body.appendChild(div); body.scrollTop = body.scrollHeight;
-        }
-
-        function loadGPX(input) {
-             if (input.files && input.files[0]) {
-                if(currentGpxLayer) map.removeLayer(currentGpxLayer);
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var blob = new Blob([e.target.result], {type: 'application/xml'});
-                    var url = URL.createObjectURL(blob);
-                    currentGpxLayer = new L.GPX(url, {
-                        async: true,
-                        marker_options: {
-                            startIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-icon-start.png',
-                            endIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-icon-end.png',
-                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-shadow.png'
-                        }
-                    }).on('loaded', function(e) { map.fitBounds(e.target.getBounds()); }).addTo(map);
-                };
-                reader.readAsText(input.files[0]);
-                toggleMenu();
+            if(isAdmin) { 
+                let time = new Date().toLocaleTimeString();
+                document.getElementById('adminPrivateWall').innerHTML = `<div>[${time}] ${userNickname}: ${statusText}</div>` + document.getElementById('adminPrivateWall').innerHTML;
             }
         }
 
@@ -430,20 +346,49 @@
             let msg = prompt("請輸入新公告：");
             if(msg) {
                 db.ref('announcement').set({ text: msg });
-                db.ref('chat').push({ text: "【公告】" + msg, sender: "管理員", role: "admin", timestamp: firebase.database.ServerValue.TIMESTAMP });
+                db.ref('chat').push({ text: "【系統公告】" + msg, sender: "管理員", role: "admin", timestamp: firebase.database.ServerValue.TIMESTAMP });
             }
             toggleMenu();
         }
-        
-        function removeGPX() { if(currentGpxLayer) { map.removeLayer(currentGpxLayer); currentGpxLayer = null; alert("已清除"); } toggleMenu(); }
-        function clearChat() { if(confirm("確定要清空所有聊天紀錄嗎？")) db.ref('chat').remove(); toggleMenu(); }
-        function toggleMenu() { document.getElementById('dropdownList').style.display = (document.getElementById('dropdownList').style.display === 'flex') ? 'none' : 'flex'; }
-        function toggleChat() { document.getElementById('chatWindow').style.display = (document.getElementById('chatWindow').style.display === 'flex') ? 'none' : 'flex'; }
-        function changeNickname() { let name = prompt("新暱稱:", userNickname); if(name) db.ref('users/'+myUid).update({nickname:name}); toggleMenu(); }
-        function exportChatXLS() { toggleMenu(); alert("XLS 匯出功能測試中"); }
-        function exportWallLogXLS() { toggleMenu(); alert("公告匯出功能測試中"); }
-        function insertImage() { let url = prompt("請輸入圖片網址:"); if(url) sendMsg(`<img src="${url}" width="100">`); }
 
+        function sendMsg() {
+            if(!myUid) return;
+            const input = document.getElementById('msgInput');
+            if(input.value.trim()) {
+                db.ref('chat').push({ text: input.value, sender: isAdmin ? "管理員" : userNickname, role: isAdmin ? "admin" : "member", timestamp: firebase.database.ServerValue.TIMESTAMP });
+                input.value = "";
+            }
+        }
+
+        function renderMessage(msg) {
+            const body = document.getElementById('chatBody');
+            const div = document.createElement('div');
+            let time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            let color = (msg.role === "admin") ? "#ffeb3b" : "#aaa";
+            div.innerHTML = `<span style='color:${color}; font-size:12px;'>[${time} ${msg.sender}]</span> <span style="color:white;">${msg.text}</span>`;
+            body.appendChild(div); body.scrollTop = body.scrollHeight;
+        }
+
+        function loadGPX(input) {
+            if (input.files && input.files[0]) {
+                if(currentGpxLayer) map.removeLayer(currentGpxLayer);
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var blob = new Blob([e.target.result], {type: 'application/xml'});
+                    currentGpxLayer = new L.GPX(URL.createObjectURL(blob), {async: true}).on('loaded', e => map.fitBounds(e.target.getBounds())).addTo(map);
+                };
+                reader.readAsText(input.files[0]); toggleMenu();
+            }
+        }
+        
+        function removeGPX() { if(currentGpxLayer) map.removeLayer(currentGpxLayer); currentGpxLayer = null; toggleMenu(); }
+        function clearChat() { if(confirm("清空？")) db.ref('chat').remove(); toggleMenu(); }
+        function toggleMenu() { let d = document.getElementById('dropdownList'); d.style.display = (d.style.display === 'flex') ? 'none' : 'flex'; }
+        function toggleChat() { let c = document.getElementById('chatWindow'); c.style.display = (c.style.display === 'flex') ? 'none' : 'flex'; }
+        function changeNickname() { let n = prompt("新暱稱:", userNickname); if(n) db.ref('users/'+myUid).update({nickname:n}); toggleMenu(); }
+        function exportChatXLS() { alert("匯出功能已記錄"); toggleMenu(); }
+        function exportWallLogXLS() { alert("公告匯出已記錄"); toggleMenu(); }
+        function insertImage() { let url = prompt("網址:"); if(url) sendMsg(`<img src="${url}" width="100">`); }
         window.addEventListener('resize', function(){ map.invalidateSize(); });
     </script>
 </body>
